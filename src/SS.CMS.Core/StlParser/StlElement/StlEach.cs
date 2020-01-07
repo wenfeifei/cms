@@ -1,9 +1,10 @@
 ﻿using System.Collections.Generic;
 using System.Text;
+using System.Threading.Tasks;
 using SS.CMS.Core.Models.Attributes;
-using SS.CMS.Core.Models.Enumerations;
+using SS.CMS.Core.Common.Enums;
 using SS.CMS.Core.StlParser.Models;
-using SS.CMS.Core.StlParser.Template;
+using SS.CMS.Core.StlParser.Utility;
 using SS.CMS.Utils;
 
 namespace SS.CMS.Core.StlParser.StlElement
@@ -23,14 +24,14 @@ namespace SS.CMS.Core.StlParser.StlElement
             {ContentAttribute.FileUrl, "遍历内容的附件字段"}
         };
 
-        public static string Parse(ParseContext parseContext)
+        public static async Task<object> ParseAsync(ParseContext parseContext)
         {
-            var listInfo = ListInfo.GetListInfo(parseContext);
+            var listInfo = await ListInfo.GetListInfoAsync(parseContext);
 
-            return ParseImpl(parseContext, listInfo);
+            return await ParseImplAsync(parseContext, listInfo);
         }
 
-        private static string ParseImpl(ParseContext parseContext, ListInfo listInfo)
+        private static async Task<string> ParseImplAsync(ParseContext parseContext, ListInfo listInfo)
         {
             var parsedContent = string.Empty;
 
@@ -40,7 +41,7 @@ namespace SS.CMS.Core.StlParser.StlElement
                 type = ContentAttribute.ImageUrl;
             }
 
-            var contentInfo = parseContext.ContentInfo;
+            var contentInfo = await parseContext.GetContentInfoAsync();
             var valueList = new List<string>();
 
             if (contentInfo != null)
@@ -84,15 +85,11 @@ namespace SS.CMS.Core.StlParser.StlElement
 
             if (valueList == null || valueList.Count == 0) return string.Empty;
 
-            var eachList = new List<Container.Each>();
+            var eachList = new List<KeyValuePair<int, object>>();
             var index = 0;
             foreach (string value in valueList)
             {
-                eachList.Add(new Container.Each
-                {
-                    ItemIndex = index++,
-                    Value = value
-                });
+                eachList.Add(new KeyValuePair<int, object>(index++, value));
             }
 
             var builder = new StringBuilder();
@@ -126,7 +123,7 @@ namespace SS.CMS.Core.StlParser.StlElement
 
                     parseContext.PageInfo.EachItems.Push(each);
                     var templateString = isAlternative ? listInfo.AlternatingItemTemplate : listInfo.ItemTemplate;
-                    builder.Append(TemplateUtility.GetEachsTemplateString(templateString, listInfo.SelectedItems, listInfo.SelectedValues, string.Empty, parseContext));
+                    builder.Append(await TemplateUtility.GetEachsTemplateStringAsync(templateString, listInfo.SelectedItems, listInfo.SelectedValues, string.Empty, parseContext));
                 }
 
                 if (!string.IsNullOrEmpty(listInfo.FooterTemplate))
@@ -175,7 +172,7 @@ namespace SS.CMS.Core.StlParser.StlElement
 
                                     parseContext.PageInfo.EachItems.Push(each);
                                     var templateString = isAlternative ? listInfo.AlternatingItemTemplate : listInfo.ItemTemplate;
-                                    cellHtml = TemplateUtility.GetEachsTemplateString(templateString, listInfo.SelectedItems, listInfo.SelectedValues, string.Empty, parseContext);
+                                    cellHtml = await TemplateUtility.GetEachsTemplateStringAsync(templateString, listInfo.SelectedItems, listInfo.SelectedValues, string.Empty, parseContext);
                                 }
                                 tr.AddCell(cellHtml, cellAttributes);
                                 itemIndex++;

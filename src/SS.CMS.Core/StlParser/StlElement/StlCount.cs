@@ -1,12 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using SS.CMS.Abstractions.Enums;
-using SS.CMS.Core.Cache;
-using SS.CMS.Core.Cache.Stl;
+using System.Linq;
+using System.Threading.Tasks;
 using SS.CMS.Core.StlParser.Models;
-using SS.CMS.Core.StlParser.Utility;
+using SS.CMS.Enums;
 using SS.CMS.Utils;
-using SS.CMS.Utils.Enumerations;
 
 namespace SS.CMS.Core.StlParser.StlElement
 {
@@ -47,7 +45,7 @@ namespace SS.CMS.Core.StlParser.StlElement
             {TypeContents, "内容数"}
         };
 
-        public static string Parse(ParseContext parseContext)
+        public static async Task<object> ParseAsync(ParseContext parseContext)
         {
             var type = string.Empty;
             var channelIndex = string.Empty;
@@ -91,10 +89,10 @@ namespace SS.CMS.Core.StlParser.StlElement
                 }
             }
 
-            return ParseImpl(parseContext, type, channelIndex, channelName, upLevel, topLevel, scope, since);
+            return await ParseImplAsync(parseContext, type, channelIndex, channelName, upLevel, topLevel, scope, since);
         }
 
-        private static string ParseImpl(ParseContext parseContext, string type, string channelIndex, string channelName, int upLevel, int topLevel, ScopeType scope, string since)
+        private static async Task<string> ParseImplAsync(ParseContext parseContext, string type, string channelIndex, string channelName, int upLevel, int topLevel, ScopeType scope, string since)
         {
             var count = 0;
 
@@ -106,24 +104,27 @@ namespace SS.CMS.Core.StlParser.StlElement
 
             if (string.IsNullOrEmpty(type) || StringUtils.EqualsIgnoreCase(type, TypeContents))
             {
-                var channelId = StlDataUtility.GetChannelIdByLevel(parseContext.SiteId, parseContext.ChannelId, upLevel, topLevel);
-                channelId = StlDataUtility.GetChannelIdByChannelIdOrChannelIndexOrChannelName(parseContext.SiteId, channelId, channelIndex, channelName);
+                var channelId = await parseContext.GetChannelIdByLevelAsync(parseContext.SiteId, parseContext.ChannelId, upLevel, topLevel);
+                channelId = await parseContext.GetChannelIdByChannelIdOrChannelIndexOrChannelNameAsync(parseContext.SiteId, channelId, channelIndex, channelName);
 
-                var nodeInfo = ChannelManager.GetChannelInfo(parseContext.SiteId, channelId);
-                var channelIdList = ChannelManager.GetChannelIdList(nodeInfo, scope, string.Empty, string.Empty, string.Empty);
+                var channel = await parseContext.ChannelRepository.GetChannelAsync(channelId);
+                var channelIdList = await parseContext.ChannelRepository.GetIdListAsync(channel, scope, string.Empty, string.Empty, string.Empty);
                 foreach (var theChannelId in channelIdList)
                 {
-                    var channelInfo = ChannelManager.GetChannelInfo(parseContext.SiteId, theChannelId);
-                    count += channelInfo.ContentRepository.StlGetCountOfContentAdd(parseContext.SiteId, channelInfo, ScopeType.Self, sinceDate, DateTime.Now.AddDays(1), string.Empty, true);
+                    var channelInfo = await parseContext.ChannelRepository.GetChannelAsync(theChannelId);
+                    var contentRepository = parseContext.ChannelRepository.GetContentRepository(parseContext.SiteInfo, channelInfo);
+
+                    count += await contentRepository.GetCountOfContentAddAsync(parseContext.SiteId, channelInfo.Id, ScopeType.Self, sinceDate, DateTime.Now.AddDays(1), 0, true);
                 }
             }
             else if (StringUtils.EqualsIgnoreCase(type, TypeChannels))
             {
-                var channelId = StlDataUtility.GetChannelIdByLevel(parseContext.SiteId, parseContext.ChannelId, upLevel, topLevel);
-                channelId = StlDataUtility.GetChannelIdByChannelIdOrChannelIndexOrChannelName(parseContext.SiteId, channelId, channelIndex, channelName);
+                var channelId = await parseContext.GetChannelIdByLevelAsync(parseContext.SiteId, parseContext.ChannelId, upLevel, topLevel);
+                channelId = await parseContext.GetChannelIdByChannelIdOrChannelIndexOrChannelNameAsync(parseContext.SiteId, channelId, channelIndex, channelName);
 
-                var nodeInfo = ChannelManager.GetChannelInfo(parseContext.SiteId, channelId);
-                count = nodeInfo.ChildrenCount;
+                var channel = await parseContext.ChannelRepository.GetChannelAsync(channelId);
+                var childrenIds = await parseContext.ChannelRepository.GetChildrenIdsAsync(channel.SiteId, channel.Id);
+                count = childrenIds.Count();
             }
 
             return count.ToString();

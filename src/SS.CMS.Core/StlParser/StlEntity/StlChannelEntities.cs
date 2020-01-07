@@ -1,12 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using SS.CMS.Abstractions;
-using SS.CMS.Abstractions.Enums;
-using SS.CMS.Core.Cache;
+using System.Threading.Tasks;
 using SS.CMS.Core.Common;
 using SS.CMS.Core.Models.Attributes;
 using SS.CMS.Core.StlParser.Models;
 using SS.CMS.Core.StlParser.Utility;
+using SS.CMS.Enums;
 using SS.CMS.Utils;
 
 namespace SS.CMS.Core.StlParser.StlEntity
@@ -43,7 +42,7 @@ namespace SS.CMS.Core.StlParser.StlEntity
             {ItemIndex, "栏目排序"}
         };
 
-        internal static string Parse(string stlEntity, ParseContext parseContext)
+        internal static async Task<string> ParseAsync(string stlEntity, ParseContext parseContext)
         {
             var parsedContent = string.Empty;
 
@@ -59,7 +58,7 @@ namespace SS.CMS.Core.StlParser.StlEntity
                 if (!string.IsNullOrEmpty(channelIndex))
                 {
                     //channelId = DataProvider.ChannelDao.GetIdByIndexName(pageInfo.SiteId, channelIndex);
-                    channelId = ChannelManager.GetChannelIdByIndexName(parseContext.SiteId, channelIndex);
+                    channelId = await parseContext.ChannelRepository.GetIdByIndexNameAsync(parseContext.SiteId, channelIndex);
                     if (channelId == 0)
                     {
                         channelId = parseContext.ChannelId;
@@ -95,7 +94,7 @@ namespace SS.CMS.Core.StlParser.StlEntity
                     attributeName = attributeName.Substring(attributeName.IndexOf(".", StringComparison.Ordinal) + 1);
                 }
 
-                var nodeInfo = ChannelManager.GetChannelInfo(parseContext.SiteId, StlDataUtility.GetChannelIdByLevel(parseContext.SiteId, channelId, upLevel, topLevel));
+                var nodeInfo = await parseContext.ChannelRepository.GetChannelAsync(await parseContext.GetChannelIdByLevelAsync(parseContext.SiteId, channelId, upLevel, topLevel));
 
                 if (StringUtils.EqualsIgnoreCase(ChannelId, attributeName))//栏目ID
                 {
@@ -115,7 +114,7 @@ namespace SS.CMS.Core.StlParser.StlEntity
                 }
                 else if (StringUtils.EqualsIgnoreCase(NavigationUrl, attributeName))//栏目链接地址
                 {
-                    parsedContent = parseContext.UrlManager.GetChannelUrl(parseContext.SiteInfo, nodeInfo, parseContext.IsLocal);
+                    parsedContent = await parseContext.UrlManager.GetChannelUrlAsync(parseContext.SiteInfo, nodeInfo, parseContext.IsLocal);
                 }
                 else if (StringUtils.EqualsIgnoreCase(ImageUrl, attributeName))//栏目图片地址
                 {
@@ -128,7 +127,7 @@ namespace SS.CMS.Core.StlParser.StlEntity
                 }
                 else if (StringUtils.EqualsIgnoreCase(AddDate, attributeName))//栏目添加日期
                 {
-                    parsedContent = DateUtils.Format(nodeInfo.AddDate, string.Empty);
+                    parsedContent = DateUtils.Format(nodeInfo.CreatedDate, string.Empty);
                 }
                 else if (StringUtils.EqualsIgnoreCase(DirectoryName, attributeName))//生成文件夹名称
                 {
@@ -155,7 +154,7 @@ namespace SS.CMS.Core.StlParser.StlEntity
                     //var styleInfo = TableStyleManager.GetTableStyleInfo(ETableStyle.Channel, DataProvider.ChannelDao.TableName, attributeName, RelatedIdentities.GetChannelRelatedIdentities(pageInfo.SiteId, nodeInfo.ChannelId));
                     //parsedContent = InputParserUtility.GetContentByTableStyle(parsedContent, ",", pageInfo.SiteInfo, ETableStyle.Channel, styleInfo, string.Empty, null, string.Empty, true);
 
-                    var styleInfo = parseContext.TableStyleRepository.GetTableStyleInfo(DataProvider.ChannelRepository.TableName, attributeName, parseContext.TableStyleRepository.GetRelatedIdentities(nodeInfo));
+                    var styleInfo = await parseContext.TableStyleRepository.GetTableStyleInfoAsync(parseContext.ChannelRepository.TableName, attributeName, parseContext.TableStyleRepository.GetRelatedIdentities(nodeInfo));
                     if (styleInfo.Id > 0)
                     {
                         parsedContent = nodeInfo.Get(attributeName, styleInfo.DefaultValue);

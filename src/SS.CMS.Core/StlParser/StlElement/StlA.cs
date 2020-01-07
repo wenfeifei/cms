@@ -1,9 +1,8 @@
 ﻿using System.Collections.Specialized;
 using System.Text;
-using SS.CMS.Core.Cache;
+using System.Threading.Tasks;
 using SS.CMS.Core.Common;
 using SS.CMS.Core.StlParser.Models;
-using SS.CMS.Core.StlParser.Utility;
 using SS.CMS.Utils;
 
 namespace SS.CMS.Core.StlParser.StlElement
@@ -40,7 +39,7 @@ namespace SS.CMS.Core.StlParser.StlElement
         [StlAttribute(Title = "链接参数")]
         private const string QueryString = nameof(QueryString);
 
-        public static string Parse(ParseContext parseContext)
+        public static async Task<object> ParseAsync(ParseContext parseContext)
         {
             var attributes = new NameValueCollection();
             var channelIndex = string.Empty;
@@ -57,7 +56,7 @@ namespace SS.CMS.Core.StlParser.StlElement
                 var value = parseContext.Attributes[name];
                 if (StringUtils.EqualsIgnoreCase(name, ChannelIndex))
                 {
-                    channelIndex = parseContext.ReplaceStlEntitiesForAttributeValue(value);
+                    channelIndex = await parseContext.ReplaceStlEntitiesForAttributeValueAsync(value);
                     if (!string.IsNullOrEmpty(channelIndex))
                     {
                         parseContext.ContextType = EContextType.Channel;
@@ -65,7 +64,7 @@ namespace SS.CMS.Core.StlParser.StlElement
                 }
                 else if (StringUtils.EqualsIgnoreCase(name, ChannelName))
                 {
-                    channelName = parseContext.ReplaceStlEntitiesForAttributeValue(value);
+                    channelName = await parseContext.ReplaceStlEntitiesForAttributeValueAsync(value);
                     if (!string.IsNullOrEmpty(channelName))
                     {
                         parseContext.ContextType = EContextType.Channel;
@@ -101,11 +100,11 @@ namespace SS.CMS.Core.StlParser.StlElement
                 }
                 else if (StringUtils.EqualsIgnoreCase(name, Href))
                 {
-                    href = parseContext.ReplaceStlEntitiesForAttributeValue(value);
+                    href = await parseContext.ReplaceStlEntitiesForAttributeValueAsync(value);
                 }
                 else if (StringUtils.EqualsIgnoreCase(name, QueryString))
                 {
-                    queryString = parseContext.ReplaceStlEntitiesForAttributeValue(value);
+                    queryString = await parseContext.ReplaceStlEntitiesForAttributeValueAsync(value);
                 }
                 else if (StringUtils.EqualsIgnoreCase(name, Host))
                 {
@@ -117,13 +116,13 @@ namespace SS.CMS.Core.StlParser.StlElement
                 }
             }
 
-            var parsedContent = ParseImpl(parseContext, channelIndex, channelName, upLevel, topLevel,
+            var parsedContent = await ParseImplAsync(parseContext, channelIndex, channelName, upLevel, topLevel,
                 removeTarget, href, queryString, host, attributes);
 
             return parsedContent;
         }
 
-        private static string ParseImpl(ParseContext parseContext, string channelIndex,
+        private static async Task<string> ParseImplAsync(ParseContext parseContext, string channelIndex,
             string channelName, int upLevel, int topLevel, bool removeTarget, string href, string queryString,
             string host, NameValueCollection attributes)
         {
@@ -148,7 +147,7 @@ namespace SS.CMS.Core.StlParser.StlElement
                 url = parseContext.UrlManager.ParseNavigationUrl(parseContext.SiteInfo, href, parseContext.IsLocal);
 
                 var innerBuilder = new StringBuilder(parseContext.InnerHtml);
-                parseContext.ParseInnerContent(innerBuilder);
+                await parseContext.ParseInnerContentAsync(innerBuilder);
                 innerHtml = innerBuilder.ToString();
             }
             else
@@ -160,21 +159,21 @@ namespace SS.CMS.Core.StlParser.StlElement
 
                 if (parseContext.ContextType == EContextType.Content) //获取内容Url
                 {
-                    if (parseContext.ContentInfo != null)
+                    var contentInfo = await parseContext.GetContentInfoAsync();
+                    if (contentInfo != null)
                     {
-                        url = parseContext.UrlManager.GetContentUrl(parseContext.SiteInfo, parseContext.ContentInfo, parseContext.IsLocal);
+                        url = await parseContext.UrlManager.GetContentUrlAsync(parseContext.SiteInfo, contentInfo, parseContext.IsLocal);
                     }
                     else
                     {
-                        var nodeInfo = ChannelManager.GetChannelInfo(parseContext.SiteId, parseContext.ChannelId);
-                        url = parseContext.UrlManager.GetContentUrl(parseContext.SiteInfo, nodeInfo, parseContext.ContentId, parseContext.IsLocal);
+                        var nodeInfo = await parseContext.ChannelRepository.GetChannelAsync(parseContext.ChannelId);
+                        url = await parseContext.UrlManager.GetContentUrlAsync(parseContext.SiteInfo, nodeInfo, parseContext.ContentId, parseContext.IsLocal);
                     }
 
                     if (string.IsNullOrEmpty(parseContext.InnerHtml))
                     {
-                        var title = parseContext.ContentInfo?.Title;
-                        title = ContentUtility.FormatTitle(
-                            parseContext.ContentInfo?.TitleFormatString, title);
+                        var title = contentInfo?.Title;
+                        title = ContentUtility.FormatTitle(contentInfo?.TitleFormatString, title);
 
                         if (parseContext.SiteInfo.IsContentTitleBreakLine)
                         {
@@ -186,20 +185,20 @@ namespace SS.CMS.Core.StlParser.StlElement
                     else
                     {
                         var innerBuilder = new StringBuilder(parseContext.InnerHtml);
-                        parseContext.ParseInnerContent(innerBuilder);
+                        await parseContext.ParseInnerContentAsync(innerBuilder);
                         innerHtml = innerBuilder.ToString();
                     }
                 }
                 else if (parseContext.ContextType == EContextType.Channel) //获取栏目Url
                 {
+                    parseContext.ChannelId = await
+                        parseContext.GetChannelIdByLevelAsync(parseContext.SiteId, parseContext.ChannelId, upLevel, topLevel);
                     parseContext.ChannelId =
-                        StlDataUtility.GetChannelIdByLevel(parseContext.SiteId, parseContext.ChannelId, upLevel, topLevel);
-                    parseContext.ChannelId =
-                        ChannelManager.GetChannelId(parseContext.SiteId,
+                        await parseContext.ChannelRepository.GetIdAsync(parseContext.SiteId,
                             parseContext.ChannelId, channelIndex, channelName);
-                    var channel = ChannelManager.GetChannelInfo(parseContext.SiteId, parseContext.ChannelId);
+                    var channel = await parseContext.ChannelRepository.GetChannelAsync(parseContext.ChannelId);
 
-                    url = parseContext.UrlManager.GetChannelUrl(parseContext.SiteInfo, channel, parseContext.IsLocal);
+                    url = await parseContext.UrlManager.GetChannelUrlAsync(parseContext.SiteInfo, channel, parseContext.IsLocal);
                     if (string.IsNullOrWhiteSpace(parseContext.InnerHtml))
                     {
                         innerHtml = channel.ChannelName;
@@ -207,7 +206,7 @@ namespace SS.CMS.Core.StlParser.StlElement
                     else
                     {
                         var innerBuilder = new StringBuilder(parseContext.InnerHtml);
-                        parseContext.ParseInnerContent(innerBuilder);
+                        await parseContext.ParseInnerContentAsync(innerBuilder);
                         innerHtml = innerBuilder.ToString();
                     }
                 }

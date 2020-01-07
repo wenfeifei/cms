@@ -1,13 +1,10 @@
 ﻿using System.Collections.Generic;
 using System.Text;
-using SS.CMS.Abstractions.Models;
-using SS.CMS.Abstractions.Repositories;
-using SS.CMS.Core.Cache;
-using SS.CMS.Core.Models;
-using SS.CMS.Core.Models.Enumerations;
+using System.Threading.Tasks;
+using SS.CMS.Core.Common.Enums;
 using SS.CMS.Core.StlParser.Models;
-using SS.CMS.Core.StlParser.Template;
 using SS.CMS.Core.StlParser.Utility;
+using SS.CMS.Models;
 
 namespace SS.CMS.Core.StlParser.StlElement
 {
@@ -22,26 +19,26 @@ namespace SS.CMS.Core.StlParser.StlElement
         [StlAttribute(Title = "站点文件夹")]
         private const string SiteDir = nameof(SiteDir);
 
-        public static object Parse(ParseContext parseContext)
+        public static async Task<object> ParseAsync(ParseContext parseContext)
         {
             var context = parseContext.Clone(EContextType.Site);
-            var listInfo = ListInfo.GetListInfo(context);
+            var listInfo = await ListInfo.GetListInfoAsync(context);
             var siteName = listInfo.Others.Get(SiteName);
             var siteDir = listInfo.Others.Get(SiteDir);
 
             // var dataSource = StlDataUtility.GetSitesDataSource(siteName, siteDir, listInfo.StartNum, listInfo.TotalNum, listInfo.Where, listInfo.Scope, listInfo.OrderByString);
 
-            var siteList = StlDataUtility.GetContainerSiteList(siteName, siteDir, listInfo.StartNum, listInfo.TotalNum, listInfo.Scope, listInfo.Order);
+            var siteList = await parseContext.GetContainerSiteListAsync(siteName, siteDir, listInfo.StartNum, listInfo.TotalNum, listInfo.Scope, listInfo.Order);
 
             if (context.IsStlEntity)
             {
-                return ParseEntity(context, siteList);
+                return await ParseEntityAsync(context, siteList);
             }
 
-            return ParseElement(context, listInfo, siteList);
+            return await ParseElementAsync(context, listInfo, siteList);
         }
 
-        private static string ParseElement(ParseContext context, ListInfo listInfo, List<KeyValuePair<int, SiteInfo>> siteList)
+        private static async Task<string> ParseElementAsync(ParseContext context, ListInfo listInfo, List<KeyValuePair<int, Site>> siteList)
         {
             if (siteList == null || siteList.Count == 0) return string.Empty;
 
@@ -76,7 +73,7 @@ namespace SS.CMS.Core.StlParser.StlElement
 
                     context.PageInfo.SiteItems.Push(site);
                     var templateString = isAlternative ? listInfo.AlternatingItemTemplate : listInfo.ItemTemplate;
-                    builder.Append(TemplateUtility.GetSitesTemplateString(templateString, string.Empty, context));
+                    builder.Append(await TemplateUtility.GetSitesTemplateStringAsync(templateString, string.Empty, context));
                 }
 
                 if (!string.IsNullOrEmpty(listInfo.FooterTemplate))
@@ -125,7 +122,7 @@ namespace SS.CMS.Core.StlParser.StlElement
 
                                     context.PageInfo.SiteItems.Push(site);
                                     var templateString = isAlternative ? listInfo.AlternatingItemTemplate : listInfo.ItemTemplate;
-                                    cellHtml = TemplateUtility.GetSitesTemplateString(templateString, string.Empty, context);
+                                    cellHtml = await TemplateUtility.GetSitesTemplateStringAsync(templateString, string.Empty, context);
                                 }
                                 tr.AddCell(cellHtml, cellAttributes);
                                 itemIndex++;
@@ -223,13 +220,13 @@ namespace SS.CMS.Core.StlParser.StlElement
             // return parsedContent;
         }
 
-        private static List<SiteInfo> ParseEntity(ParseContext context, List<KeyValuePair<int, SiteInfo>> siteList)
+        private static async Task<List<Site>> ParseEntityAsync(ParseContext context, List<KeyValuePair<int, Site>> siteList)
         {
-            var siteInfoList = new List<SiteInfo>();
+            var siteInfoList = new List<Site>();
 
             foreach (var site in siteList)
             {
-                var siteInfo = context.SiteRepository.GetSiteInfo(site.Value.Id);
+                var siteInfo = await context.SiteRepository.GetSiteAsync(site.Value.Id);
                 if (siteInfo != null)
                 {
                     siteInfoList.Add(siteInfo);

@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
-using SS.CMS.Abstractions.Models;
-using SS.CMS.Core.Security;
-using SS.CMS.Utils;
+using System.Threading.Tasks;
+using SS.CMS.Models;
+using SS.CMS.Services;
 
 namespace SS.CMS.Core.Common
 {
@@ -93,7 +93,7 @@ namespace SS.CMS.Core.Common
             public const string Fail1 = "终审退稿";
         }
 
-        public static List<KeyValuePair<int, string>> GetCheckedLevels(SiteInfo siteInfo, bool isChecked, int checkedLevel, bool includeFail)
+        public static List<KeyValuePair<int, string>> GetCheckedLevels(Site siteInfo, bool isChecked, int checkedLevel, bool includeFail)
         {
             var checkedLevels = new List<KeyValuePair<int, string>>();
 
@@ -286,9 +286,9 @@ namespace SS.CMS.Core.Common
 
 
 
-        public static string GetCheckState(SiteInfo siteInfo, ContentInfo contentInfo)
+        public static string GetCheckState(Site siteInfo, Content contentInfo)
         {
-            if (contentInfo.Checked)
+            if (contentInfo.IsChecked)
             {
                 return Level.YiShenHe;
             }
@@ -497,9 +497,9 @@ namespace SS.CMS.Core.Common
             return false;
         }
 
-        public static KeyValuePair<bool, int> GetUserCheckLevel(Permissions permissions, SiteInfo siteInfo, int channelId)
+        public static async Task<KeyValuePair<bool, int>> GetUserCheckLevelPairAsync(IUserManager userManager, Site siteInfo, int channelId)
         {
-            if (permissions.IsSystemAdministrator)
+            if (userManager.IsSuperAdministrator())
             {
                 return new KeyValuePair<bool, int>(true, siteInfo.CheckContentLevel);
             }
@@ -508,18 +508,18 @@ namespace SS.CMS.Core.Common
             var checkedLevel = 0;
             if (siteInfo.IsCheckContentLevel == false)
             {
-                if (permissions.HasChannelPermissions(siteInfo.Id, channelId, Constants.ChannelPermissions.ContentCheck))
+                if (await userManager.HasChannelPermissionsAsync(siteInfo.Id, channelId, AuthTypes.ChannelPermissions.ContentCheck))
                 {
                     isChecked = true;
                 }
             }
             else
             {
-                if (permissions.HasChannelPermissions(siteInfo.Id, channelId, Constants.ChannelPermissions.ContentCheckLevel5))
+                if (await userManager.HasChannelPermissionsAsync(siteInfo.Id, channelId, AuthTypes.ChannelPermissions.ContentCheckLevel5))
                 {
                     isChecked = true;
                 }
-                else if (permissions.HasChannelPermissions(siteInfo.Id, channelId, Constants.ChannelPermissions.ContentCheckLevel4))
+                else if (await userManager.HasChannelPermissionsAsync(siteInfo.Id, channelId, AuthTypes.ChannelPermissions.ContentCheckLevel4))
                 {
                     if (siteInfo.CheckContentLevel <= 4)
                     {
@@ -530,7 +530,7 @@ namespace SS.CMS.Core.Common
                         checkedLevel = 4;
                     }
                 }
-                else if (permissions.HasChannelPermissions(siteInfo.Id, channelId, Constants.ChannelPermissions.ContentCheckLevel3))
+                else if (await userManager.HasChannelPermissionsAsync(siteInfo.Id, channelId, AuthTypes.ChannelPermissions.ContentCheckLevel3))
                 {
                     if (siteInfo.CheckContentLevel <= 3)
                     {
@@ -541,7 +541,7 @@ namespace SS.CMS.Core.Common
                         checkedLevel = 3;
                     }
                 }
-                else if (permissions.HasChannelPermissions(siteInfo.Id, channelId, Constants.ChannelPermissions.ContentCheckLevel2))
+                else if (await userManager.HasChannelPermissionsAsync(siteInfo.Id, channelId, AuthTypes.ChannelPermissions.ContentCheckLevel2))
                 {
                     if (siteInfo.CheckContentLevel <= 2)
                     {
@@ -552,7 +552,7 @@ namespace SS.CMS.Core.Common
                         checkedLevel = 2;
                     }
                 }
-                else if (permissions.HasChannelPermissions(siteInfo.Id, channelId, Constants.ChannelPermissions.ContentCheckLevel1))
+                else if (await userManager.HasChannelPermissionsAsync(siteInfo.Id, channelId, AuthTypes.ChannelPermissions.ContentCheckLevel1))
                 {
                     if (siteInfo.CheckContentLevel <= 1)
                     {
@@ -571,19 +571,18 @@ namespace SS.CMS.Core.Common
             return new KeyValuePair<bool, int>(isChecked, checkedLevel);
         }
 
-        public static bool GetUserCheckLevel(Permissions permissions, SiteInfo siteInfo, int channelId, out int userCheckedLevel)
+        public static async Task<(bool IsChecked, int checkedLevel)> GetUserCheckLevelAsync(IUserManager userManager, Site siteInfo, int channelId)
         {
             var checkContentLevel = siteInfo.CheckContentLevel;
 
-            var pair = GetUserCheckLevel(permissions, siteInfo, channelId);
+            var pair = await GetUserCheckLevelPairAsync(userManager, siteInfo, channelId);
             var isChecked = pair.Key;
             var checkedLevel = pair.Value;
             if (isChecked)
             {
                 checkedLevel = checkContentLevel;
             }
-            userCheckedLevel = checkedLevel;
-            return isChecked;
+            return (isChecked, checkedLevel);
         }
     }
 }

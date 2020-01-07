@@ -1,25 +1,26 @@
-using SS.CMS.Abstractions.Models;
+using System.Threading.Tasks;
+using SS.CMS.Models;
 using SS.CMS.Utils;
 
 namespace SS.CMS.Core.Services
 {
     public partial class UrlManager
     {
-        public string GetSpecialUrl(SiteInfo siteInfo, string url)
+        public string GetSpecialUrl(Site siteInfo, string url)
         {
             var virtualPath = PageUtils.RemoveFileNameFromUrl(url);
             return ParseNavigationUrl(siteInfo, virtualPath, false);
         }
 
-        public string GetSpecialUrl(SiteInfo siteInfo, int specialId)
+        public async Task<string> GetSpecialUrlAsync(Site siteInfo, int specialId)
         {
-            var specialInfo = _specialRepository.GetSpecialInfo(siteInfo.Id, specialId);
+            var specialInfo = await _specialRepository.GetSpecialInfoAsync(siteInfo.Id, specialId);
             return GetSpecialUrl(siteInfo, specialInfo.Url);
         }
 
-        public string GetSpecialUrl(SiteInfo siteInfo, int specialId, bool isLocal)
+        public async Task<string> GetSpecialUrlAsync(Site siteInfo, int specialId, bool isLocal)
         {
-            var specialUrl = GetSpecialUrl(siteInfo, specialId);
+            var specialUrl = await GetSpecialUrlAsync(siteInfo, specialId);
 
             var url = isLocal
                 ? GetPreviewSpecialUrl(siteInfo.Id, specialId)

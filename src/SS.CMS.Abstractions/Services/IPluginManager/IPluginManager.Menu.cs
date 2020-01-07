@@ -1,18 +1,19 @@
 ﻿using System.Collections.Generic;
-using SS.CMS.Abstractions.Models;
+using System.Threading.Tasks;
+using SS.CMS.Models;
 
-namespace SS.CMS.Abstractions.Services
+namespace SS.CMS.Services
 {
     public partial interface IPluginManager
     {
-        List<Menu> GetTopMenus(IUrlManager urlManager);
+        Task<List<Menu>> GetTopMenusAsync(IUrlManager urlManager);
 
-        List<Menu> GetSiteMenus(IUrlManager urlManager, int siteId);
+        Task<List<Menu>> GetSiteMenusAsync(IUrlManager urlManager, int siteId);
 
-        List<Menu> GetContentMenus(IUrlManager urlManager, List<string> pluginIds, ContentInfo contentInfo);
+        Task<List<Menu>> GetContentMenusAsync(IUrlManager urlManager, List<string> pluginIds, Content contentInfo);
 
-        List<Permission> GetTopPermissions();
+        Task<List<MenuPermission>> GetTopPermissionsAsync();
 
-        List<Permission> GetSitePermissions(int siteId);
+        Task<List<MenuPermission>> GetSitePermissionsAsync(int siteId);
     }
 }

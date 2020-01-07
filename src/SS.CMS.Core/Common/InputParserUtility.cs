@@ -1,20 +1,17 @@
 using System.Collections;
 using System.Collections.Specialized;
-using SS.CMS.Abstractions;
-using SS.CMS.Abstractions.Enums;
-using SS.CMS.Abstractions.Models;
-using SS.CMS.Abstractions.Services;
-using SS.CMS.Core.Api;
 using SS.CMS.Core.Api.Sys.Stl;
-using SS.CMS.Core.Models;
 using SS.CMS.Core.Models.Attributes;
+using SS.CMS.Enums;
+using SS.CMS.Models;
+using SS.CMS.Services;
 using SS.CMS.Utils;
 
 namespace SS.CMS.Core.Common
 {
     public static class InputParserUtility
     {
-        public static string GetContentByTableStyle(IFileManager fileManager, IUrlManager urlManager, ISettingsManager settingsManager, string content, SiteInfo siteInfo, TableStyleInfo styleInfo)
+        public static string GetContentByTableStyle(IFileManager fileManager, IUrlManager urlManager, ISettingsManager settingsManager, string content, Site siteInfo, TableStyle styleInfo)
         {
             if (!string.IsNullOrEmpty(content))
             {
@@ -23,7 +20,7 @@ namespace SS.CMS.Core.Common
             return string.Empty;
         }
 
-        public static string GetContentByTableStyle(IFileManager fileManager, IUrlManager urlManager, ISettingsManager settingsManager, string content, string separator, SiteInfo siteInfo, TableStyleInfo styleInfo, string formatString, NameValueCollection attributes, string innerHtml, bool isStlEntity)
+        public static string GetContentByTableStyle(IFileManager fileManager, IUrlManager urlManager, ISettingsManager settingsManager, string content, string separator, Site siteInfo, TableStyle styleInfo, string formatString, NameValueCollection attributes, string innerHtml, bool isStlEntity)
         {
             var parsedContent = content;
 
@@ -103,7 +100,7 @@ namespace SS.CMS.Core.Common
             return parsedContent;
         }
 
-        public static string GetContentByTableStyle(IFileManager fileManager, IUrlManager urlManager, ISettingsManager settingsManager, ContentInfo contentInfo, string separator, SiteInfo siteInfo, TableStyleInfo styleInfo, string formatString, int no, NameValueCollection attributes, string innerHtml, bool isStlEntity)
+        public static string GetContentByTableStyle(IFileManager fileManager, IUrlManager urlManager, ISettingsManager settingsManager, Content contentInfo, string separator, Site siteInfo, TableStyle styleInfo, string formatString, int no, NameValueCollection attributes, string innerHtml, bool isStlEntity)
         {
             var value = contentInfo.Get<string>(styleInfo.AttributeName);
             var parsedContent = string.Empty;
@@ -239,7 +236,7 @@ namespace SS.CMS.Core.Common
             return parsedContent;
         }
 
-        public static string GetImageOrFlashHtml(IUrlManager urlManager, SiteInfo siteInfo, string imageUrl, NameValueCollection attributes, bool isStlEntity)
+        public static string GetImageOrFlashHtml(IUrlManager urlManager, Site siteInfo, string imageUrl, NameValueCollection attributes, bool isStlEntity)
         {
             var retVal = string.Empty;
             if (!string.IsNullOrEmpty(imageUrl))
@@ -301,7 +298,7 @@ namespace SS.CMS.Core.Common
             return retVal;
         }
 
-        public static string GetVideoHtml(IUrlManager urlManager, ISettingsManager settingsManager, SiteInfo siteInfo, string videoUrl, NameValueCollection attributes, bool isStlEntity)
+        public static string GetVideoHtml(IUrlManager urlManager, ISettingsManager settingsManager, Site siteInfo, string videoUrl, NameValueCollection attributes, bool isStlEntity)
         {
             var retVal = string.Empty;
             if (!string.IsNullOrEmpty(videoUrl))
@@ -313,23 +310,23 @@ namespace SS.CMS.Core.Common
                 }
                 else
                 {
+                    var swfUrl = urlManager.GetAssetsUrl(siteInfo, SiteFilesAssets.BrPlayer.Swf);
                     retVal = $@"
-<embed src=""{SiteFilesAssets.GetUrl(urlManager.ApiUrl, SiteFilesAssets.BrPlayer.Swf)}"" allowfullscreen=""true"" flashvars=""controlbar=over&autostart={true
-                        .ToString().ToLower()}&image={string.Empty}&file={videoUrl}"" width=""{450}"" height=""{350}""/>
+<embed src=""swfUrl"" allowfullscreen=""true"" flashvars=""controlbar=over&autostart={true.ToString().ToLower()}&image={string.Empty}&file={videoUrl}"" width=""{450}"" height=""{350}""/>
 ";
                 }
             }
             return retVal;
         }
 
-        public static string GetFileHtmlWithCount(IUrlManager urlManager, ISettingsManager settingsManager, SiteInfo siteInfo, int channelId, int contentId, string fileUrl, NameValueCollection attributes, string innerHtml, bool isStlEntity, bool isLower, bool isUpper)
+        public static string GetFileHtmlWithCount(IUrlManager urlManager, ISettingsManager settingsManager, Site siteInfo, int channelId, int contentId, string fileUrl, NameValueCollection attributes, string innerHtml, bool isStlEntity, bool isLower, bool isUpper)
         {
             if (siteInfo == null || string.IsNullOrEmpty(fileUrl)) return string.Empty;
 
             string retVal;
             if (isStlEntity)
             {
-                retVal = ApiRouteActionsDownload.GetUrl(settingsManager, urlManager.ApiUrl, siteInfo.Id, channelId, contentId,
+                retVal = ApiRouteActionsDownload.GetUrl(settingsManager, siteInfo.Id, channelId, contentId,
                     fileUrl);
             }
             else
@@ -337,7 +334,7 @@ namespace SS.CMS.Core.Common
                 var linkAttributes = new NameValueCollection();
 
                 TranslateUtils.AddAttributesIfNotExists(linkAttributes, attributes);
-                linkAttributes["href"] = ApiRouteActionsDownload.GetUrl(settingsManager, urlManager.ApiUrl, siteInfo.Id, channelId,
+                linkAttributes["href"] = ApiRouteActionsDownload.GetUrl(settingsManager, siteInfo.Id, channelId,
                     contentId, fileUrl);
 
                 innerHtml = string.IsNullOrEmpty(innerHtml)
@@ -358,21 +355,21 @@ namespace SS.CMS.Core.Common
             return retVal;
         }
 
-        public static string GetFileHtmlWithoutCount(IUrlManager urlManager, ISettingsManager settingsManager, SiteInfo siteInfo, string fileUrl, NameValueCollection attributes, string innerHtml, bool isStlEntity, bool isLower, bool isUpper)
+        public static string GetFileHtmlWithoutCount(IUrlManager urlManager, ISettingsManager settingsManager, Site siteInfo, string fileUrl, NameValueCollection attributes, string innerHtml, bool isStlEntity, bool isLower, bool isUpper)
         {
             if (siteInfo == null || string.IsNullOrEmpty(fileUrl)) return string.Empty;
 
             string retVal;
             if (isStlEntity)
             {
-                retVal = ApiRouteActionsDownload.GetUrl(settingsManager, urlManager.ApiUrl, siteInfo.Id, fileUrl);
+                retVal = ApiRouteActionsDownload.GetUrl(settingsManager, siteInfo.Id, fileUrl);
             }
             else
             {
                 var linkAttributes = new NameValueCollection();
 
                 TranslateUtils.AddAttributesIfNotExists(linkAttributes, attributes);
-                linkAttributes["href"] = ApiRouteActionsDownload.GetUrl(settingsManager, urlManager.ApiUrl, siteInfo.Id, fileUrl);
+                linkAttributes["href"] = ApiRouteActionsDownload.GetUrl(settingsManager, siteInfo.Id, fileUrl);
                 innerHtml = string.IsNullOrEmpty(innerHtml) ? PageUtils.GetFileNameFromUrl(fileUrl) : innerHtml;
 
                 if (isLower)

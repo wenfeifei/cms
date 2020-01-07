@@ -1,8 +1,7 @@
 ﻿using System.Collections.Generic;
-using SS.CMS.Abstractions.Models;
-using SS.CMS.Abstractions.Services;
-using SS.CMS.Core.Models;
 using SS.CMS.Core.StlParser.StlElement;
+using SS.CMS.Models;
+using SS.CMS.Services;
 using SS.CMS.Utils;
 
 namespace SS.CMS.Core.Common
@@ -28,7 +27,7 @@ namespace SS.CMS.Core.Common
             return "UE";
         }
 
-        public static string GetInsertVideoScript(IUrlManager urlManager, string attributeName, string playUrl, string imageUrl, SiteInfo siteInfo)
+        public static string GetInsertVideoScript(string attributeName, string playUrl, string imageUrl, Site siteInfo)
         {
             if (string.IsNullOrEmpty(playUrl)) return string.Empty;
 
@@ -53,10 +52,10 @@ namespace SS.CMS.Core.Common
             }
 
             return GetInsertHtmlScript(attributeName,
-                $@"<img class=""siteserver-stl-player"" src=""{SiteServerAssets.GetUrl(urlManager, "ueditor/video-clip.png")}"" {TranslateUtils.ToAttributesString(dict)} />");
+                $@"<img class=""siteserver-stl-player"" src=""{SiteServerAssets.GetUrl("ueditor/video-clip.png")}"" {TranslateUtils.ToAttributesString(dict)} />");
         }
 
-        public static string GetInsertAudioScript(IUrlManager urlManager, string attributeName, string playUrl, SiteInfo siteInfo)
+        public static string GetInsertAudioScript(string attributeName, string playUrl, Site siteInfo)
         {
             if (string.IsNullOrEmpty(playUrl)) return string.Empty;
 
@@ -68,7 +67,7 @@ namespace SS.CMS.Core.Common
             };
 
             return GetInsertHtmlScript(attributeName,
-                $@"<img class=""siteserver-stl-audio"" src=""{SiteServerAssets.GetUrl(urlManager, "ueditor/audio-clip.png")}"" {TranslateUtils.ToAttributesString(dict)} />");
+                $@"<img class=""siteserver-stl-audio"" src=""{SiteServerAssets.GetUrl("ueditor/audio-clip.png")}"" {TranslateUtils.ToAttributesString(dict)} />");
         }
 
         public static string GetPureTextScript(string attributeName)

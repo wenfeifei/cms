@@ -1,13 +1,15 @@
 using System.Collections;
-using SS.CMS.Abstractions.Models;
-using SS.CMS.Abstractions.Repositories;
+using System.Threading.Tasks;
+using SS.CMS.Models;
 
-namespace SS.CMS.Abstractions.Services
+namespace SS.CMS.Services
 {
     public partial interface IPathManager
     {
-        IDictionary ChannelRulesGetDictionary(ITableStyleRepository tableStyleRepository, SiteInfo siteInfo, int channelId);
+        Task<string> GetChannelFilePathRuleAsync(Site siteInfo, int channelId);
 
-        string ChannelRulesParse(SiteInfo siteInfo, int channelId);
+        Task<IDictionary> ChannelRulesGetDictionaryAsync(Site siteInfo, int channelId);
+
+        Task<string> ChannelRulesParseAsync(Site siteInfo, int channelId);
     }
 }

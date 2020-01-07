@@ -1,21 +1,26 @@
 ﻿using System;
 using System.Collections.Generic;
-using SS.CMS.Abstractions.Models;
+using System.Threading.Tasks;
+using SS.CMS.Models;
 
-namespace SS.CMS.Abstractions.Services
+namespace SS.CMS.Services
 {
     public partial interface IPluginManager
     {
-        List<IPackageMetadata> GetContentModelPlugins();
+        bool IsContentTable(IService service);
 
-        List<string> GetContentTableNameList();
+        Task<string> GetContentTableNameAsync(string pluginId);
 
-        List<IPackageMetadata> GetAllContentRelatedPlugins(bool includeContentTable);
+        Task<List<IPackageMetadata>> GetContentModelPluginsAsync();
 
-        List<IService> GetContentPlugins(ChannelInfo channelInfo, bool includeContentTable);
+        Task<List<string>> GetContentTableNameListAsync();
 
-        List<string> GetContentPluginIds(ChannelInfo channelInfo);
+        Task<List<IPackageMetadata>> GetAllContentRelatedPluginsAsync(bool includeContentTable);
 
-        Dictionary<string, Dictionary<string, Func<IContentContext, string>>> GetContentColumns(List<string> pluginIds);
+        Task<List<IService>> GetContentPluginsAsync(Channel channelInfo, bool includeContentTable);
+
+        List<string> GetContentPluginIds(Channel channelInfo);
+
+        Task<Dictionary<string, Dictionary<string, Func<IContentContext, string>>>> GetContentColumnsAsync(List<string> pluginIds);
     }
 }

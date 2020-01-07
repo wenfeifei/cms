@@ -1,16 +1,17 @@
 using System.Collections.Specialized;
-using SS.CMS.Abstractions.Models;
+using System.Threading.Tasks;
+using SS.CMS.Models;
 
-namespace SS.CMS.Abstractions.Services
+namespace SS.CMS.Services
 {
     public partial interface IUrlManager
     {
-        string GetSiteUrl(int siteId);
+        Task<string> GetSiteUrlAsync(int siteId);
 
-        string GetSiteUrl(int siteId, string virtualPath);
+        Task<string> GetSiteUrlAsync(int siteId, string virtualPath);
 
-        string GetSiteUrlByFilePath(string filePath);
+        Task<string> GetSiteUrlByFilePathAsync(string filePath);
 
-        void PutImagePaths(SiteInfo siteInfo, ContentInfo contentInfo, NameValueCollection collection);
+        void PutImagePaths(Site siteInfo, Content contentInfo, NameValueCollection collection);
     }
 }

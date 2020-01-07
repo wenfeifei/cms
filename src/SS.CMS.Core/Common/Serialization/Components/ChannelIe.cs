@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using SS.CMS.Abstractions;
-using SS.CMS.Abstractions.Enums;
-using SS.CMS.Abstractions.Models;
-using SS.CMS.Abstractions.Repositories;
+using System.Threading.Tasks;
 using SS.CMS.Core.Models;
 using SS.CMS.Core.Models.Attributes;
+using SS.CMS.Enums;
+using SS.CMS.Models;
+using SS.CMS.Repositories;
 using SS.CMS.Utils.Atom.Atom.AdditionalElements;
 using SS.CMS.Utils.Atom.Atom.Core;
 
@@ -13,10 +13,10 @@ namespace SS.CMS.Core.Serialization.Components
 {
     internal class ChannelIe
     {
-        private readonly SiteInfo _siteInfo;
+        private readonly Site _siteInfo;
         private readonly ITemplateRepository _templateRepository;
 
-        public ChannelIe(SiteInfo siteInfo)
+        public ChannelIe(Site siteInfo)
         {
             _siteInfo = siteInfo;
         }
@@ -25,8 +25,13 @@ namespace SS.CMS.Core.Serialization.Components
         private const string ChannelTemplateName = "ChannelTemplateName";
         private const string ContentTemplateName = "ContentTemplateName";
 
-        public void ImportNodeInfo(ChannelInfo channelInfo, ScopedElementCollection additionalElements, int parentId, IList<string> indexNameList)
+        public async Task ImportChannelAsync(Channel channelInfo, ScopedElementCollection additionalElements, int parentId, IEnumerable<string> indexNames)
         {
+            var indexNameList = new List<string>();
+            if (indexNames != null)
+            {
+                indexNameList.AddRange(indexNames);
+            }
             channelInfo.ChannelName = AtomUtility.GetDcElementContent(additionalElements, new List<string> { ChannelAttribute.ChannelName, "NodeName" });
             channelInfo.SiteId = _siteInfo.Id;
             var contentModelPluginId = AtomUtility.GetDcElementContent(additionalElements, ChannelAttribute.ContentModelPluginId);
@@ -47,7 +52,6 @@ namespace SS.CMS.Core.Serialization.Components
                 indexNameList.Add(indexName);
             }
             channelInfo.GroupNameCollection = AtomUtility.GetDcElementContent(additionalElements, new List<string> { ChannelAttribute.GroupNameCollection, "NodeGroupNameCollection" });
-            channelInfo.AddDate = DateTime.Now;
             channelInfo.ImageUrl = AtomUtility.GetDcElementContent(additionalElements, ChannelAttribute.ImageUrl);
             channelInfo.Content = AtomUtility.Decrypt(AtomUtility.GetDcElementContent(additionalElements, ChannelAttribute.Content));
             channelInfo.FilePath = AtomUtility.GetDcElementContent(additionalElements, ChannelAttribute.FilePath);
@@ -60,12 +64,12 @@ namespace SS.CMS.Core.Serialization.Components
             var channelTemplateName = AtomUtility.GetDcElementContent(additionalElements, ChannelTemplateName);
             if (!string.IsNullOrEmpty(channelTemplateName))
             {
-                channelInfo.ChannelTemplateId = _templateRepository.GetTemplateIdByTemplateName(_siteInfo.Id, TemplateType.ChannelTemplate, channelTemplateName);
+                channelInfo.ChannelTemplateId = await _templateRepository.GetTemplateIdByTemplateNameAsync(_siteInfo.Id, TemplateType.ChannelTemplate, channelTemplateName);
             }
             var contentTemplateName = AtomUtility.GetDcElementContent(additionalElements, ContentTemplateName);
             if (!string.IsNullOrEmpty(contentTemplateName))
             {
-                channelInfo.ContentTemplateId = _templateRepository.GetTemplateIdByTemplateName(_siteInfo.Id, TemplateType.ContentTemplate, contentTemplateName);
+                channelInfo.ContentTemplateId = await _templateRepository.GetTemplateIdByTemplateNameAsync(_siteInfo.Id, TemplateType.ContentTemplate, contentTemplateName);
             }
 
             channelInfo.Keywords = AtomUtility.GetDcElementContent(additionalElements, ChannelAttribute.Keywords);
@@ -74,7 +78,7 @@ namespace SS.CMS.Core.Serialization.Components
             channelInfo.ExtendValues = AtomUtility.GetDcElementContent(additionalElements, ChannelAttribute.ExtendValues);
         }
 
-        public AtomFeed ExportNodeInfo(ChannelInfo channelInfo)
+        public async Task<AtomFeed> ExportChannelAsync(Channel channelInfo)
         {
             var feed = AtomUtility.GetEmptyFeed();
 
@@ -85,16 +89,9 @@ namespace SS.CMS.Core.Serialization.Components
             AtomUtility.AddDcElement(feed.AdditionalElements, ChannelAttribute.ContentRelatedPluginIds, channelInfo.ContentRelatedPluginIds);
             AtomUtility.AddDcElement(feed.AdditionalElements, ChannelAttribute.ParentId, channelInfo.ParentId.ToString());
             AtomUtility.AddDcElement(feed.AdditionalElements, ChannelAttribute.ParentsPath, channelInfo.ParentsPath);
-            AtomUtility.AddDcElement(feed.AdditionalElements, ChannelAttribute.ParentsCount, channelInfo.ParentsCount.ToString());
-            AtomUtility.AddDcElement(feed.AdditionalElements, ChannelAttribute.ChildrenCount, channelInfo.ChildrenCount.ToString());
-            AtomUtility.AddDcElement(feed.AdditionalElements, ChannelAttribute.LastNode, channelInfo.LastNode.ToString());
             AtomUtility.AddDcElement(feed.AdditionalElements, new List<string> { ChannelAttribute.IndexName, "NodeIndexName" }, channelInfo.IndexName);
             AtomUtility.AddDcElement(feed.AdditionalElements, new List<string> { ChannelAttribute.GroupNameCollection, "NodeGroupNameCollection" }, channelInfo.GroupNameCollection);
             AtomUtility.AddDcElement(feed.AdditionalElements, ChannelAttribute.Taxis, channelInfo.Taxis.ToString());
-            if (channelInfo.AddDate.HasValue)
-            {
-                AtomUtility.AddDcElement(feed.AdditionalElements, ChannelAttribute.AddDate, channelInfo.AddDate.Value.ToLongDateString());
-            }
             AtomUtility.AddDcElement(feed.AdditionalElements, ChannelAttribute.ImageUrl, channelInfo.ImageUrl);
             AtomUtility.AddDcElement(feed.AdditionalElements, ChannelAttribute.Content, AtomUtility.Encrypt(channelInfo.Content));
             AtomUtility.AddDcElement(feed.AdditionalElements, ChannelAttribute.FilePath, channelInfo.FilePath);
@@ -110,13 +107,13 @@ namespace SS.CMS.Core.Serialization.Components
 
             if (channelInfo.ChannelTemplateId != 0)
             {
-                var channelTemplateName = _templateRepository.GetTemplateName(channelInfo.SiteId, channelInfo.ChannelTemplateId);
+                var channelTemplateName = await _templateRepository.GetTemplateNameAsync(channelInfo.ChannelTemplateId);
                 AtomUtility.AddDcElement(feed.AdditionalElements, ChannelTemplateName, channelTemplateName);
             }
 
             if (channelInfo.ContentTemplateId != 0)
             {
-                var contentTemplateName = _templateRepository.GetTemplateName(channelInfo.SiteId, channelInfo.ContentTemplateId);
+                var contentTemplateName = await _templateRepository.GetTemplateNameAsync(channelInfo.ContentTemplateId);
                 AtomUtility.AddDcElement(feed.AdditionalElements, ContentTemplateName, contentTemplateName);
             }
 

@@ -2,14 +2,12 @@
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
-using System.Text;
+using System.Threading.Tasks;
 using Dapper;
 using SqlKata;
-using SS.CMS.Abstractions.Models;
-using SS.CMS.Core.Cache;
-using SS.CMS.Core.Common;
 using SS.CMS.Core.StlParser.Models;
 using SS.CMS.Data;
+using SS.CMS.Models;
 using SS.CMS.Utils;
 using Attr = SS.CMS.Core.Models.Attributes.ContentAttribute;
 
@@ -17,7 +15,7 @@ namespace SS.CMS.Core.Repositories
 {
     public partial class ContentRepository
     {
-        private List<KeyValuePair<int, ContentInfo>> GetContainerContentListChecked(List<int> channelIdList, int startNum, int totalNum, string order, Query query, NameValueCollection others)
+        public async Task<List<KeyValuePair<int, Content>>> GetContainerContentListCheckedAsync(List<int> channelIdList, int startNum, int totalNum, string order, Query query, NameValueCollection others)
         {
             if (channelIdList == null || channelIdList.Count == 0) return null;
 
@@ -25,7 +23,7 @@ namespace SS.CMS.Core.Repositories
 
             if (others != null && others.Count > 0)
             {
-                var columnNameList = _tableManager.GetTableColumnNameList(TableName);
+                var columnNameList = await _databaseRepository.GetTableColumnNameListAsync(TableName);
 
                 foreach (var attributeName in others.AllKeys)
                 {
@@ -135,49 +133,49 @@ namespace SS.CMS.Core.Repositories
                 }
             }
 
-            return startNum <= 1 ? GetContainerContentListByContentNumAndWhereString(totalNum, query, order) : GetContainerContentListByStartNum(startNum, totalNum, query, order);
+            return startNum <= 1 ? await GetContainerContentListByContentNumAndWhereStringAsync(totalNum, query, order) : await GetContainerContentListByStartNumAsync(startNum, totalNum, query, order);
         }
 
-        private List<KeyValuePair<int, ContentInfo>> GetContainerContentListByContentNumAndWhereString(int totalNum, Query query, string order)
+        public async Task<List<KeyValuePair<int, Content>>> GetContainerContentListByContentNumAndWhereStringAsync(int totalNum, Query query, string order)
         {
-            var list = new List<KeyValuePair<int, ContentInfo>>();
+            var list = new List<KeyValuePair<int, Content>>();
             var itemIndex = 0;
 
             QuerySelectMinColumns(query);
-            var contentInfoList = _repository.GetAll(query
+            var contentInfoList = await _repository.GetAllAsync(query
                 .Limit(totalNum)
                 .OrderByRaw(order)
-                ).ToList();
+                );
 
             foreach (var contentInfo in contentInfoList)
             {
-                list.Add(new KeyValuePair<int, ContentInfo>(itemIndex++, contentInfo));
+                list.Add(new KeyValuePair<int, Content>(itemIndex++, contentInfo));
             }
 
             return list;
         }
 
-        private List<KeyValuePair<int, ContentInfo>> GetContainerContentListByStartNum(int startNum, int totalNum, Query query, string order)
+        public async Task<List<KeyValuePair<int, Content>>> GetContainerContentListByStartNumAsync(int startNum, int totalNum, Query query, string order)
         {
-            var list = new List<KeyValuePair<int, ContentInfo>>();
+            var list = new List<KeyValuePair<int, Content>>();
             var itemIndex = 0;
 
             QuerySelectMinColumns(query);
-            var contentInfoList = _repository.GetAll(query
+            var contentInfoList = await _repository.GetAllAsync(query
                 .Offset(startNum - 1)
                 .Limit(totalNum)
                 .OrderByRaw(order)
-            ).ToList();
+            );
 
             foreach (var contentInfo in contentInfoList)
             {
-                list.Add(new KeyValuePair<int, ContentInfo>(itemIndex++, contentInfo));
+                list.Add(new KeyValuePair<int, Content>(itemIndex++, contentInfo));
             }
 
             return list;
         }
 
-        public List<KeyValuePair<int, ContentInfo>> GetContainerContentListBySqlString(string sqlString, string orderString, int totalCount, int itemsPerPage, int currentPageIndex)
+        public List<KeyValuePair<int, Content>> GetContainerContentListBySqlString(string sqlString, string orderString, int totalCount, int itemsPerPage, int currentPageIndex)
         {
             var pageSqlString = string.Empty;
 
@@ -207,7 +205,7 @@ namespace SS.CMS.Core.Repositories
             orderStringReverse = orderStringReverse.Replace(" ASC", " DESC");
             orderStringReverse = orderStringReverse.Replace(" DESC2", " ASC");
 
-            if (_repository.Db.DatabaseType == DatabaseType.MySql)
+            if (_repository.Database.DatabaseType == DatabaseType.MySql)
             {
                 pageSqlString = $@"
 SELECT {Container.Content.SqlColumns} FROM (
@@ -216,7 +214,7 @@ SELECT {Container.Content.SqlColumns} FROM (
     ) AS t1 {orderStringReverse} LIMIT {recsToRetrieve}
 ) AS t2 {orderString}";
             }
-            else if (_repository.Db.DatabaseType == DatabaseType.SqlServer)
+            else if (_repository.Database.DatabaseType == DatabaseType.SqlServer)
             {
                 pageSqlString = $@"
 SELECT {Container.Content.SqlColumns} FROM (
@@ -225,7 +223,7 @@ SELECT {Container.Content.SqlColumns} FROM (
     ) AS t1 {orderStringReverse}
 ) AS t2 {orderString}";
             }
-            else if (_repository.Db.DatabaseType == DatabaseType.PostgreSql)
+            else if (_repository.Database.DatabaseType == DatabaseType.PostgreSql)
             {
                 pageSqlString = $@"
 SELECT {Container.Content.SqlColumns} FROM (
@@ -234,7 +232,7 @@ SELECT {Container.Content.SqlColumns} FROM (
     ) AS t1 {orderStringReverse} LIMIT {recsToRetrieve}
 ) AS t2 {orderString}";
             }
-            else if (_repository.Db.DatabaseType == DatabaseType.Oracle)
+            else if (_repository.Database.DatabaseType == DatabaseType.Oracle)
             {
                 pageSqlString = $@"
 SELECT {Container.Content.SqlColumns} FROM (
@@ -244,18 +242,18 @@ SELECT {Container.Content.SqlColumns} FROM (
 ) {orderString}";
             }
 
-            var list = new List<KeyValuePair<int, ContentInfo>>();
+            var list = new List<KeyValuePair<int, Content>>();
             var itemIndex = 0;
-            var contentInfoList = new List<ContentInfo>();
+            var contentInfoList = new List<Content>();
 
-            using (var connection = _repository.Db.GetConnection())
+            using (var connection = _repository.Database.GetConnection())
             {
-                contentInfoList = connection.Query<ContentInfo>(pageSqlString).ToList();
+                contentInfoList = connection.Query<Content>(pageSqlString).ToList();
             }
 
             foreach (var contentInfo in contentInfoList)
             {
-                list.Add(new KeyValuePair<int, ContentInfo>(itemIndex++, contentInfo));
+                list.Add(new KeyValuePair<int, Content>(itemIndex++, contentInfo));
             }
 
             return list;

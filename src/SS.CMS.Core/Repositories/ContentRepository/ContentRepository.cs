@@ -1,12 +1,12 @@
 ﻿using System.Collections.Generic;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Caching.Distributed;
 using SqlKata;
-using SS.CMS.Abstractions.Enums;
-using SS.CMS.Abstractions.Models;
-using SS.CMS.Abstractions.Repositories;
-using SS.CMS.Abstractions.Services;
-using SS.CMS.Core.Cache.Stl;
-using SS.CMS.Core.Common;
 using SS.CMS.Data;
+using SS.CMS.Enums;
+using SS.CMS.Models;
+using SS.CMS.Repositories;
+using SS.CMS.Services;
 using SS.CMS.Utils;
 using Attr = SS.CMS.Core.Models.Attributes.ContentAttribute;
 
@@ -14,31 +14,35 @@ namespace SS.CMS.Core.Repositories
 {
     public partial class ContentRepository : IContentRepository
     {
+        private readonly IDistributedCache _cache;
         private readonly ISettingsManager _settingsManager;
-        private readonly IAdministratorRepository _administratorRepository;
-        private readonly IPluginManager _pluginManager;
+        private readonly IDatabaseRepository _databaseRepository;
+        private readonly IContentCheckRepository _contentCheckRepository;
         private readonly IUserRepository _userRepository;
         private readonly ISiteRepository _siteRepository;
-        private readonly ITableStyleRepository _tableStyleRepository;
+        private readonly IChannelRepository _channelRepository;
+        private readonly ITagRepository _tagRepository;
+        private readonly IErrorLogRepository _errorLogRepository;
 
-        private readonly Repository<ContentInfo> _repository;
-        private readonly TableManager _tableManager;
+        private readonly Repository<Content> _repository;
 
-        public ContentRepository(ISettingsManager settingsManager, IPluginManager pluginManager, IAdministratorRepository administratorRepository, IUserRepository userRepository, ISiteRepository siteRepository, ITableStyleRepository tableStyleRepository, string tableName)
+        public ContentRepository(IDistributedCache cache, ISettingsManager settingsManager, IDatabaseRepository databaseRepository, IContentCheckRepository contentCheckRepository, IUserRepository userRepository, ISiteRepository siteRepository, IChannelRepository channelRepository, ITagRepository tagRepository, IErrorLogRepository errorLogRepository, string tableName)
         {
-            _repository = new Repository<ContentInfo>(new Db(settingsManager.DatabaseType, settingsManager.DatabaseConnectionString), tableName);
-
+            _cache = cache;
             _settingsManager = settingsManager;
-            _pluginManager = pluginManager;
-            _administratorRepository = administratorRepository;
-            _siteRepository = siteRepository;
+            _databaseRepository = databaseRepository;
+            _contentCheckRepository = contentCheckRepository;
             _userRepository = userRepository;
-            _tableStyleRepository = tableStyleRepository;
+            _siteRepository = siteRepository;
+            _channelRepository = channelRepository;
+            _userRepository = userRepository;
+            _tagRepository = tagRepository;
+            _errorLogRepository = errorLogRepository;
 
-            _tableManager = new TableManager(_settingsManager);
+            _repository = new Repository<Content>(new Database(settingsManager.DatabaseType, settingsManager.DatabaseConnectionString), tableName);
         }
 
-        public IDb Db => _repository.Db;
+        public IDatabase Database => _repository.Database;
         public string TableName => _repository.TableName;
         public List<TableColumn> TableColumns => _repository.TableColumns;
 
@@ -58,18 +62,13 @@ namespace SS.CMS.Core.Repositories
         //     return Instance(db, tableName);
         // }
 
-        public string GetContentTableName(int siteId)
-        {
-            return $"siteserver_Content_{siteId}";
-        }
-
         private Query MinColumnsQuery => Q
                 .Select(Attr.Id)
                 .Select(Attr.SiteId)
                 .Select(Attr.ChannelId)
                 .Select(Attr.IsTop)
                 .Select(Attr.AddDate)
-                .Select(Attr.LastEditDate)
+                .Select(Attr.LastModifiedDate)
                 .Select(Attr.Taxis)
                 .Select(Attr.Hits)
                 .Select(Attr.HitsByDay)
@@ -85,7 +84,7 @@ namespace SS.CMS.Core.Repositories
                 .Select(Attr.ChannelId)
                 .Select(Attr.IsTop)
                 .Select(Attr.AddDate)
-                .Select(Attr.LastEditDate)
+                .Select(Attr.LastModifiedDate)
                 .Select(Attr.Taxis)
                 .Select(Attr.Hits)
                 .Select(Attr.HitsByDay)
@@ -169,12 +168,12 @@ namespace SS.CMS.Core.Repositories
             }
         }
 
-        private void QueryWhereTags(Query query, int siteId, string tags)
+        private async Task QueryWhereTagsAsync(Query query, int siteId, string tags)
         {
             if (!string.IsNullOrEmpty(tags))
             {
-                var tagList = TagUtils.ParseTagsString(tags);
-                var contentIdList = DataProvider.TagRepository.GetContentIdListByTagCollection(tagList, siteId);
+                var tagList = _tagRepository.ParseTagsString(tags);
+                var contentIdList = await _tagRepository.GetContentIdListByTagCollectionAsync(tagList, siteId);
                 if (contentIdList.Count > 0)
                 {
                     query.WhereIn(Attr.Id, contentIdList);
@@ -182,14 +181,14 @@ namespace SS.CMS.Core.Repositories
             }
         }
 
-        private void QueryWhereIsRelatedContents(Query query, bool isRelatedContents, int siteId, ChannelInfo channelInfo, int contentId)
+        private async Task QueryWhereIsRelatedContentsAsync(Query query, bool isRelatedContents, int siteId, Channel channelInfo, int contentId)
         {
             if (isRelatedContents && contentId > 0)
             {
-                var tagCollection = StlGetValue(channelInfo, contentId, Attr.Tags);
+                var tagCollection = await GetValueAsync<string>(contentId, Attr.Tags);
                 if (!string.IsNullOrEmpty(tagCollection))
                 {
-                    var contentIdList = StlTagCache.GetContentIdListByTagCollection(TranslateUtils.StringCollectionToStringList(tagCollection), siteId);
+                    var contentIdList = await _tagRepository.GetContentIdListByTagCollectionAsync(TranslateUtils.StringCollectionToStringList(tagCollection), siteId);
                     if (contentIdList.Count > 0)
                     {
                         contentIdList.Remove(contentId);
@@ -204,7 +203,7 @@ namespace SS.CMS.Core.Repositories
             }
         }
 
-        private void QueryOrder(Query query, ChannelInfo channelInfo, string order)
+        private void QueryOrder(Query query, Channel channelInfo, string order)
         {
             QueryOrder(query, TaxisType.Parse(channelInfo.DefaultTaxisType), order);
         }
@@ -247,21 +246,21 @@ namespace SS.CMS.Core.Repositories
             {
                 query.OrderByDesc(Attr.IsTop).OrderByDesc(Attr.AddDate).OrderByDesc(Attr.Id);
             }
-            else if (taxisType == TaxisType.OrderByLastEditDate)
+            else if (taxisType == TaxisType.OrderByLastModifiedDate)
             {
-                query.OrderByDesc(Attr.IsTop).OrderBy(Attr.LastEditDate).OrderByDesc(Attr.Id);
+                query.OrderByDesc(Attr.IsTop).OrderBy(Attr.LastModifiedDate).OrderByDesc(Attr.Id);
             }
-            else if (taxisType == TaxisType.OrderByLastEditDateDesc)
+            else if (taxisType == TaxisType.OrderByLastModifiedDateDesc)
             {
-                query.OrderByDesc(Attr.IsTop).OrderByDesc(Attr.LastEditDate).OrderByDesc(Attr.Id);
+                query.OrderByDesc(Attr.IsTop).OrderByDesc(Attr.LastModifiedDate).OrderByDesc(Attr.Id);
             }
             else if (taxisType == TaxisType.OrderByTaxis)
             {
-                query.OrderByDesc(Attr.IsTop).OrderBy(Attr.LastEditDate).OrderByDesc(Attr.Id);
+                query.OrderByDesc(Attr.IsTop).OrderBy(Attr.LastModifiedDate).OrderByDesc(Attr.Id);
             }
             else if (taxisType == TaxisType.OrderByTaxisDesc)
             {
-                query.OrderByDesc(Attr.IsTop).OrderByDesc(Attr.LastEditDate).OrderByDesc(Attr.Id);
+                query.OrderByDesc(Attr.IsTop).OrderByDesc(Attr.LastModifiedDate).OrderByDesc(Attr.Id);
             }
             else if (taxisType == TaxisType.OrderByHits)
             {
@@ -285,7 +284,7 @@ namespace SS.CMS.Core.Repositories
             }
             else
             {
-                query.OrderByDesc(Attr.IsTop).OrderByDesc(Attr.LastEditDate).OrderByDesc(Attr.Id);
+                query.OrderByDesc(Attr.IsTop).OrderByDesc(Attr.LastModifiedDate).OrderByDesc(Attr.Id);
             }
         }
     }

@@ -1,9 +1,8 @@
 ﻿using System.Collections.Generic;
-using SS.CMS.Abstractions;
-using SS.CMS.Abstractions.Enums;
-using SS.CMS.Core.Cache;
+using System.Threading.Tasks;
 using SS.CMS.Core.Common;
 using SS.CMS.Core.StlParser.Models;
+using SS.CMS.Enums;
 using SS.CMS.Utils;
 
 namespace SS.CMS.Core.StlParser.StlElement
@@ -66,7 +65,7 @@ namespace SS.CMS.Core.StlParser.StlElement
             {TypeDateOfTraditional, "带农历的当前日期"}
         };
 
-        public static string Parse(ParseContext parseContext)
+        public static async Task<object> ParseAsync(ParseContext parseContext)
         {
             var type = string.Empty;
             var formatString = string.Empty;
@@ -116,11 +115,11 @@ namespace SS.CMS.Core.StlParser.StlElement
                 }
                 else if (StringUtils.EqualsIgnoreCase(name, Replace))
                 {
-                    replace = value;
+                    replace = await parseContext.ReplaceStlEntitiesForAttributeValueAsync(value);
                 }
                 else if (StringUtils.EqualsIgnoreCase(name, To))
                 {
-                    to = value;
+                    to = await parseContext.ReplaceStlEntitiesForAttributeValueAsync(value);
                 }
                 else if (StringUtils.EqualsIgnoreCase(name, IsClearTags))
                 {
@@ -140,10 +139,10 @@ namespace SS.CMS.Core.StlParser.StlElement
                 }
             }
 
-            return ParseImpl(parseContext, type, formatString, separator, startIndex, length, wordNum, ellipsis, replace, to, isClearTags, isReturnToBr, isLower, isUpper);
+            return await ParseImplAsync(parseContext, type, formatString, separator, startIndex, length, wordNum, ellipsis, replace, to, isClearTags, isReturnToBr, isLower, isUpper);
         }
 
-        private static string ParseImpl(ParseContext parseContext, string type, string formatString, string separator, int startIndex, int length, int wordNum, string ellipsis, string replace, string to, bool isClearTags, bool isReturnToBr, bool isLower, bool isUpper)
+        private static async Task<string> ParseImplAsync(ParseContext parseContext, string type, string formatString, string separator, int startIndex, int length, int wordNum, string ellipsis, string replace, string to, bool isClearTags, bool isReturnToBr, bool isLower, bool isUpper)
         {
             if (string.IsNullOrEmpty(type)) return string.Empty;
 
@@ -166,8 +165,7 @@ namespace SS.CMS.Core.StlParser.StlElement
             {
                 if (!parseContext.BodyCodes.ContainsKey("datestring.js"))
                 {
-                    parseContext.BodyCodes.Add("datestring.js", $@"<script charset=""{SiteFilesAssets.DateString.Charset}"" src=""{SiteFilesAssets.GetUrl(
-                        parseContext.ApiUrl, SiteFilesAssets.DateString.Js)}"" type=""text/javascript""></script>");
+                    parseContext.BodyCodes.Add("datestring.js", $@"<script charset=""{SiteFilesAssets.DateString.Charset}"" src=""{SiteFilesAssets.GetUrl(SiteFilesAssets.DateString.Js)}"" type=""text/javascript""></script>");
                 }
 
                 parsedContent = @"<script language=""javascript"" type=""text/javascript"">RunGLNL(false);</script>";
@@ -176,8 +174,7 @@ namespace SS.CMS.Core.StlParser.StlElement
             {
                 if (!parseContext.BodyCodes.ContainsKey("datestring"))
                 {
-                    parseContext.BodyCodes.Add("datestring", $@"<script charset=""{SiteFilesAssets.DateString.Charset}"" src=""{SiteFilesAssets.GetUrl(
-                        parseContext.ApiUrl, SiteFilesAssets.DateString.Js)}"" type=""text/javascript""></script>");
+                    parseContext.BodyCodes.Add("datestring", $@"<script charset=""{SiteFilesAssets.DateString.Charset}"" src=""{SiteFilesAssets.GetUrl(SiteFilesAssets.DateString.Js)}"" type=""text/javascript""></script>");
                 }
 
                 parsedContent = @"<script language=""javascript"" type=""text/javascript"">RunGLNL(true);</script>";
@@ -194,7 +191,7 @@ namespace SS.CMS.Core.StlParser.StlElement
                     parsedContent = parseContext.SiteInfo.Get<string>(type);
                     if (!string.IsNullOrEmpty(parsedContent))
                     {
-                        var styleInfo = parseContext.TableStyleRepository.GetTableStyleInfo(DataProvider.SiteRepository.TableName, type, parseContext.TableStyleRepository.GetRelatedIdentities(parseContext.SiteId));
+                        var styleInfo = await parseContext.TableStyleRepository.GetTableStyleInfoAsync(parseContext.SiteRepository.TableName, type, parseContext.TableStyleRepository.GetRelatedIdentities(parseContext.SiteId));
 
                         // 如果 styleInfo.TableStyleId <= 0，表示此字段已经被删除了，不需要再显示值了 ekun008
                         if (styleInfo.Id > 0)

@@ -1,9 +1,10 @@
-﻿using SS.CMS.Abstractions.Models;
+﻿using System.Threading.Tasks;
+using SS.CMS.Models;
 
-namespace SS.CMS.Abstractions.Repositories
+namespace SS.CMS.Repositories
 {
     public partial interface IContentRepository
     {
-        ContentInfo GetContentInfo(SiteInfo siteInfo, ChannelInfo channelInfo, int contentId);
+        Task<Content> GetContentInfoAsync(int contentId);
     }
 }

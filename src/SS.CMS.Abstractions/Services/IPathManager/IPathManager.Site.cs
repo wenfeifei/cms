@@ -1,73 +1,70 @@
 using System;
-using SS.CMS.Abstractions.Enums;
-using SS.CMS.Abstractions.Models;
+using System.Threading.Tasks;
+using SS.CMS.Enums;
+using SS.CMS.Models;
 
-namespace SS.CMS.Abstractions.Services
+namespace SS.CMS.Services
 {
     public partial interface IPathManager
     {
-        string GetSitePath(int siteId, string virtualPath);
+        Task<string> GetSitePathAsync(int siteId, string virtualPath);
 
-        string MapPath(SiteInfo siteInfo, string virtualPath);
+        string MapPath(Site siteInfo, string virtualPath);
 
-        string MapPath(SiteInfo siteInfo, string virtualPath, bool isCopyToSite);
+        string MapPath(Site siteInfo, string virtualPath, bool isCopyToSite);
 
-        string GetUploadFileName(SiteInfo siteInfo, string filePath);
+        string GetUploadFileName(Site siteInfo, string filePath);
 
-        string GetUploadFileName(SiteInfo siteInfo, string filePath, bool isUploadChangeFileName);
+        string GetUploadFileName(Site siteInfo, string filePath, bool isUploadChangeFileName);
 
-        string GetUploadSpecialName(SiteInfo siteInfo, string filePath, bool isUploadChangeFileName);
+        string GetUploadSpecialName(Site siteInfo, string filePath, bool isUploadChangeFileName);
 
-        string GetChannelFilePathRule(SiteInfo siteInfo, int channelId);
+        Task<string> GetChannelPageFilePathAsync(Site siteInfo, int channelId, int currentPageIndex);
 
-        string GetContentFilePathRule(SiteInfo siteInfo, int channelId);
+        Task<string> GetContentPageFilePathAsync(Site siteInfo, int channelId, int contentId, int currentPageIndex);
 
-        string GetChannelPageFilePath(SiteInfo siteInfo, int channelId, int currentPageIndex);
+        Task<string> GetContentPageFilePathAsync(Site siteInfo, int channelId, Content contentInfo, int currentPageIndex);
 
-        string GetContentPageFilePath(SiteInfo siteInfo, int channelId, int contentId, int currentPageIndex);
+        bool IsImageExtensionAllowed(Site siteInfo, string fileExtention);
 
-        string GetContentPageFilePath(SiteInfo siteInfo, int channelId, ContentInfo contentInfo, int currentPageIndex);
+        bool IsImageSizeAllowed(Site siteInfo, int contentLength);
 
-        bool IsImageExtensionAllowed(SiteInfo siteInfo, string fileExtention);
+        bool IsVideoExtensionAllowed(Site siteInfo, string fileExtention);
 
-        bool IsImageSizeAllowed(SiteInfo siteInfo, int contentLength);
+        bool IsVideoSizeAllowed(Site siteInfo, int contentLength);
 
-        bool IsVideoExtensionAllowed(SiteInfo siteInfo, string fileExtention);
+        bool IsFileExtensionAllowed(Site siteInfo, string fileExtention);
 
-        bool IsVideoSizeAllowed(SiteInfo siteInfo, int contentLength);
+        bool IsFileSizeAllowed(Site siteInfo, int contentLength);
 
-        bool IsFileExtensionAllowed(SiteInfo siteInfo, string fileExtention);
+        bool IsUploadExtensionAllowed(UploadType uploadType, Site siteInfo, string fileExtention);
 
-        bool IsFileSizeAllowed(SiteInfo siteInfo, int contentLength);
+        bool IsUploadSizeAllowed(UploadType uploadType, Site siteInfo, int contentLength);
 
-        bool IsUploadExtensionAllowed(UploadType uploadType, SiteInfo siteInfo, string fileExtention);
+        string GetSitePath(Site siteInfo);
 
-        bool IsUploadSizeAllowed(UploadType uploadType, SiteInfo siteInfo, int contentLength);
+        Task<string> GetSitePathAsync(int siteId, params string[] paths);
 
-        string GetSitePath(SiteInfo siteInfo);
+        string GetSitePath(Site siteInfo, params string[] paths);
 
-        string GetSitePath(int siteId, params string[] paths);
+        string GetIndexPageFilePath(Site siteInfo, string createFileFullName, bool isHeadquarters, int currentPageIndex);
 
-        string GetSitePath(SiteInfo siteInfo, params string[] paths);
+        string GetUploadDirectoryPath(Site siteInfo, string fileExtension);
 
-        string GetIndexPageFilePath(SiteInfo siteInfo, string createFileFullName, bool isHeadquarters, int currentPageIndex);
+        string GetUploadDirectoryPath(Site siteInfo, DateTime datetime, string fileExtension);
 
-        string GetUploadDirectoryPath(SiteInfo siteInfo, string fileExtension);
+        string GetUploadDirectoryPath(Site siteInfo, UploadType uploadType);
 
-        string GetUploadDirectoryPath(SiteInfo siteInfo, DateTime datetime, string fileExtension);
+        string GetUploadDirectoryPath(Site siteInfo, DateTime datetime, UploadType uploadType);
 
-        string GetUploadDirectoryPath(SiteInfo siteInfo, UploadType uploadType);
+        Task<int> GetSiteIdByFilePathAsync(string path);
 
-        string GetUploadDirectoryPath(SiteInfo siteInfo, DateTime datetime, UploadType uploadType);
+        Task<string> GetSitePathAsync(int siteId);
 
-        int GetSiteIdByFilePath(string path);
+        Task<string> GetUploadFilePathAsync(int siteId, string fileName);
 
-        string GetSitePath(int siteId);
+        Task<Site> GetSiteInfoByFilePathAsync(string path);
 
-        string GetUploadFilePath(int siteId, string fileName);
-
-        SiteInfo GetSiteInfoByFilePath(string path);
-
-        string GetSiteDirByFilePath(string path);
+        Task<string> GetSiteDirByFilePathAsync(string path);
     }
 }

@@ -1,25 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
-using SS.CMS.Abstractions.Models;
+using System.Threading.Tasks;
+using SS.CMS.Models;
 
-namespace SS.CMS.Abstractions.Repositories
+namespace SS.CMS.Repositories
 {
     public partial interface IContentRepository
     {
-        void RemoveCacheBySiteId(string tableName, int siteId);
+        Task RemoveCacheBySiteIdAsync(string tableName, int siteId);
 
         void RemoveCache(string tableName, int channelId);
 
         void RemoveCountCache(string tableName);
 
-        void InsertCache(SiteInfo siteInfo, ChannelInfo channelInfo, ContentInfo contentInfo);
+        Task<Content> CalculateAsync(int sequence, Content contentInfo, List<ContentColumn> columns, Dictionary<string, Dictionary<string, Func<IContentContext, string>>> pluginColumns);
 
-        void UpdateCache(SiteInfo siteInfo, ChannelInfo channelInfo, ContentInfo contentInfoToUpdate);
-
-        List<ContentColumn> GetContentColumns(SiteInfo siteInfo, ChannelInfo channelInfo, bool includeAll);
-
-        ContentInfo Calculate(int sequence, ContentInfo contentInfo, List<ContentColumn> columns, Dictionary<string, Dictionary<string, Func<IContentContext, string>>> pluginColumns);
-
-        bool IsCreatable(ChannelInfo channelInfo, ContentInfo contentInfo);
+        bool IsCreatable(Channel channelInfo, Content contentInfo);
     }
 }

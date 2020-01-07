@@ -1,28 +1,28 @@
-﻿using SS.CMS.Abstractions;
+﻿using System.Threading.Tasks;
 using SS.CMS.Data;
 
 namespace SS.CMS.Core.Services
 {
     public partial class PluginManager
     {
-        public void SyncTable(IService service)
+        public async Task SyncTableAsync(IService service)
         {
             if (service.DatabaseTables == null || service.DatabaseTables.Count <= 0) return;
 
-            var db = new Db(_settingsManager.DatabaseType, _settingsManager.DatabaseConnectionString);
+            var db = new Database(_settingsManager.DatabaseType, _settingsManager.DatabaseConnectionString);
 
             foreach (var tableName in service.DatabaseTables.Keys)
             {
                 var tableColumns = service.DatabaseTables[tableName];
                 if (tableColumns == null || tableColumns.Count == 0) continue;
 
-                if (!db.IsTableExists(tableName))
+                if (!await db.IsTableExistsAsync(tableName))
                 {
-                    db.CreateTable(tableName, tableColumns);
+                    await db.CreateTableAsync(tableName, tableColumns);
                 }
                 else
                 {
-                    db.AlterTable(tableName, tableColumns, null);
+                    await db.AlterTableAsync(tableName, tableColumns, null);
                 }
             }
         }

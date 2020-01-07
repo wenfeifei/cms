@@ -1,13 +1,14 @@
-﻿using SS.CMS.Abstractions.Models;
+﻿using System.Threading.Tasks;
+using SS.CMS.Models;
 
-namespace SS.CMS.Abstractions.Repositories
+namespace SS.CMS.Repositories
 {
     public partial interface IContentRepository
     {
-        int Insert(SiteInfo siteInfo, ChannelInfo channelInfo, ContentInfo contentInfo);
+        Task<int> InsertAsync(Site siteInfo, Channel channelInfo, Content contentInfo);
 
-        int InsertPreview(SiteInfo siteInfo, ChannelInfo channelInfo, ContentInfo contentInfo);
+        Task<int> InsertPreviewAsync(Site siteInfo, Channel channelInfo, Content contentInfo);
 
-        int InsertWithTaxis(SiteInfo siteInfo, ChannelInfo channelInfo, ContentInfo contentInfo, int taxis);
+        Task<int> InsertWithTaxisAsync(Site siteInfo, Channel channelInfo, Content contentInfo, int taxis);
     }
 }

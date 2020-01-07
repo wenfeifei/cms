@@ -1,8 +1,10 @@
-﻿using SS.CMS.Abstractions.Enums;
-using SS.CMS.Core.Cache.Stl;
+﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 using SS.CMS.Core.Common;
+using SS.CMS.Core.Services;
 using SS.CMS.Core.StlParser.Models;
 using SS.CMS.Core.StlParser.Utility;
+using SS.CMS.Enums;
 using SS.CMS.Utils;
 
 namespace SS.CMS.Core.StlParser.StlElement
@@ -64,7 +66,7 @@ namespace SS.CMS.Core.StlParser.StlElement
         [StlAttribute(Title = "是否转换为大写")]
         private const string IsUpper = nameof(IsUpper);
 
-        public static object Parse(ParseContext parseContext)
+        public static async Task<object> ParseAsync(ParseContext parseContext)
         {
             var connectionString = string.Empty;
             var queryString = string.Empty;
@@ -101,7 +103,7 @@ namespace SS.CMS.Core.StlParser.StlElement
                 }
                 else if (StringUtils.EqualsIgnoreCase(name, QueryString))
                 {
-                    queryString = parseContext.ReplaceStlEntitiesForAttributeValue(value);
+                    queryString = await parseContext.ReplaceStlEntitiesForAttributeValueAsync(value);
                 }
                 else if (StringUtils.EqualsIgnoreCase(name, Type))
                 {
@@ -164,13 +166,13 @@ namespace SS.CMS.Core.StlParser.StlElement
             if (parseContext.IsStlEntity && string.IsNullOrEmpty(type))
             {
                 object dataItem = null;
-                if (parseContext.Container?.SqlItem != null)
+                if (parseContext.Container != null && !parseContext.Container.SqlItem.Equals(default(KeyValuePair<int, Dictionary<string, object>>)))
                 {
-                    dataItem = parseContext.Container.SqlItem.Dictionary;
+                    dataItem = parseContext.Container.SqlItem.Value;
                 }
                 else if (!string.IsNullOrEmpty(queryString))
                 {
-                    var dataTable = StlDatabaseCache.GetDataTable(connectionString, queryString);
+                    var dataTable = CacheManager.GetDataTable(connectionString, queryString);
                     var dictList = TranslateUtils.DataTableToDictionaryList(dataTable);
                     if (dictList != null && dictList.Count >= 1)
                     {
@@ -209,13 +211,13 @@ namespace SS.CMS.Core.StlParser.StlElement
 
                 if (StringUtils.StartsWithIgnoreCase(type, StlParserUtility.ItemIndex))
                 {
-                    var itemIndex = StlParserUtility.ParseItemIndex(parseContext.Container.SqlItem.ItemIndex, type, parseContext);
+                    var itemIndex = StlParserUtility.ParseItemIndex(parseContext.Container.SqlItem.Key, type, parseContext);
 
                     parsedContent = !string.IsNullOrEmpty(formatString) ? string.Format(formatString, itemIndex) : itemIndex.ToString();
                 }
                 else
                 {
-                    if (parseContext.Container.SqlItem.Dictionary.TryGetValue(type, out var value))
+                    if (parseContext.Container.SqlItem.Value.TryGetValue(type, out var value))
                     {
                         parsedContent = string.Format(formatString, value);
                     }
@@ -229,7 +231,7 @@ namespace SS.CMS.Core.StlParser.StlElement
                 }
 
                 //parsedContent = DatabaseUtils.GetString(connectionString, queryString);
-                parsedContent = StlDatabaseCache.GetString(connectionString, queryString);
+                parsedContent = CacheManager.GetString(connectionString, queryString);
             }
 
             if (!string.IsNullOrEmpty(parsedContent))

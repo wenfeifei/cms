@@ -1,7 +1,9 @@
-﻿namespace SS.CMS.Abstractions.Services
+﻿using System.Threading.Tasks;
+
+namespace SS.CMS.Services
 {
     public partial interface IPluginManager
     {
-        void SyncTable(IService service);
+        Task SyncTableAsync(IService service);
     }
 }

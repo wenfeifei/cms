@@ -2,8 +2,8 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using SS.CMS.Abstractions.Repositories;
-using SS.CMS.Abstractions.Services;
+using SS.CMS.Repositories;
+using SS.CMS.Services;
 using SS.CMS.Utils;
 
 namespace SS.CMS.Core.Services
@@ -11,24 +11,18 @@ namespace SS.CMS.Core.Services
     public partial class PathManager : IPathManager
     {
         private readonly ISettingsManager _settingsManager;
+        private readonly ITableStyleRepository _tableStyleRepository;
         private readonly ISiteRepository _siteRepository;
+        private readonly IChannelRepository _channelRepository;
         private readonly ITemplateRepository _templateRepository;
 
-        public PathManager(ISettingsManager settingsManager, ISiteRepository siteRepository, ITemplateRepository templateRepository)
+        public PathManager(ISettingsManager settingsManager, ITableStyleRepository tableStyleRepository, ISiteRepository siteRepository, IChannelRepository channelRepository, ITemplateRepository templateRepository)
         {
             _settingsManager = settingsManager;
+            _tableStyleRepository = tableStyleRepository;
             _siteRepository = siteRepository;
+            _channelRepository = channelRepository;
             _templateRepository = templateRepository;
-        }
-
-        public string GetAdminPath(params string[] paths)
-        {
-            return PathUtils.Add(PathUtils.Combine(_settingsManager.ContentRootPath, _settingsManager.AdminPrefix), paths);
-        }
-
-        public string GetHomePath(params string[] paths)
-        {
-            return PathUtils.Add(PathUtils.Combine(_settingsManager.ContentRootPath, _settingsManager.HomePrefix), paths);
         }
 
         public string GetBackupFilesPath(params string[] paths)
@@ -41,29 +35,14 @@ namespace SS.CMS.Core.Services
             return PathUtils.Add(PathUtils.Combine(_settingsManager.ContentRootPath, DirectoryUtils.SiteFiles.DirectoryName, DirectoryUtils.SiteFiles.TemporaryFiles), paths);
         }
 
+        public string GetThemesPath(params string[] paths)
+        {
+            return PathUtils.Add(PathUtils.Combine(_settingsManager.ContentRootPath, "themes"), paths);
+        }
+
         public string GetSiteTemplatesPath(params string[] paths)
         {
             return PathUtils.Add(PathUtils.Combine(_settingsManager.ContentRootPath, DirectoryUtils.SiteFiles.DirectoryName, DirectoryUtils.SiteFiles.SiteTemplates), paths);
-        }
-
-        public bool IsSystemDirectory(string directoryName)
-        {
-            if (StringUtils.EqualsIgnoreCase(directoryName, _settingsManager.ApiPrefix)
-                || StringUtils.EqualsIgnoreCase(directoryName, _settingsManager.AdminPrefix)
-                || StringUtils.EqualsIgnoreCase(directoryName, _settingsManager.HomePrefix))
-            {
-                return true;
-            }
-            return false;
-        }
-
-        public bool IsWebSiteDirectory(string directoryName)
-        {
-            return StringUtils.EqualsIgnoreCase(directoryName, "channels")
-                   || StringUtils.EqualsIgnoreCase(directoryName, "contents")
-                   || StringUtils.EqualsIgnoreCase(directoryName, "Template")
-                   || StringUtils.EqualsIgnoreCase(directoryName, "include")
-                   || StringUtils.EqualsIgnoreCase(directoryName, "upload");
         }
 
         public string AddVirtualToPath(string path)
@@ -264,7 +243,6 @@ namespace SS.CMS.Core.Services
 
         public string GetHomeUploadPath(params string[] paths)
         {
-
             var path = GetSiteFilesPath(DirectoryUtils.SiteFiles.Home, PathUtils.Combine(paths));
             DirectoryUtils.CreateDirectoryIfNotExists(path);
             return path;

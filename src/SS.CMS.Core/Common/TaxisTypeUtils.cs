@@ -1,8 +1,8 @@
 ﻿using System;
 using SqlKata;
-using SS.CMS.Abstractions.Enums;
-using SS.CMS.Abstractions.Models;
 using SS.CMS.Core.Models.Attributes;
+using SS.CMS.Enums;
+using SS.CMS.Models;
 using SS.CMS.Utils;
 
 namespace SS.CMS.Core.Common
@@ -35,13 +35,13 @@ namespace SS.CMS.Core.Common
             {
                 return nameof(TaxisType.OrderByAddDateDesc);
             }
-            if (type == TaxisType.OrderByLastEditDate)
+            if (type == TaxisType.OrderByLastModifiedDate)
             {
-                return nameof(TaxisType.OrderByLastEditDate);
+                return nameof(TaxisType.OrderByLastModifiedDate);
             }
-            if (type == TaxisType.OrderByLastEditDateDesc)
+            if (type == TaxisType.OrderByLastModifiedDateDesc)
             {
-                return nameof(TaxisType.OrderByLastEditDateDesc);
+                return nameof(TaxisType.OrderByLastModifiedDateDesc);
             }
             if (type == TaxisType.OrderByTaxis)
             {
@@ -90,43 +90,43 @@ namespace SS.CMS.Core.Common
             }
             else if (taxisType == TaxisType.OrderById)
             {
-                query.OrderBy(nameof(ChannelInfo.Id));
+                query.OrderBy(nameof(Channel.Id));
             }
             else if (taxisType == TaxisType.OrderByIdDesc)
             {
-                query.OrderByDesc(nameof(ChannelInfo.Id));
+                query.OrderByDesc(nameof(Channel.Id));
             }
             else if (taxisType == TaxisType.OrderByChannelId)
             {
-                query.OrderBy(nameof(ChannelInfo.Id));
+                query.OrderBy(nameof(Channel.Id));
             }
             else if (taxisType == TaxisType.OrderByChannelIdDesc)
             {
-                query.OrderByDesc(nameof(ChannelInfo.Id));
+                query.OrderByDesc(nameof(Channel.Id));
             }
             else if (taxisType == TaxisType.OrderByAddDate)
             {
-                query.OrderBy(nameof(ChannelInfo.AddDate));
+                query.OrderBy(nameof(Channel.CreatedDate));
             }
             else if (taxisType == TaxisType.OrderByAddDateDesc)
             {
-                query.OrderByDesc(nameof(ChannelInfo.AddDate));
+                query.OrderByDesc(nameof(Channel.CreatedDate));
             }
-            else if (taxisType == TaxisType.OrderByLastEditDate)
+            else if (taxisType == TaxisType.OrderByLastModifiedDate)
             {
-                query.OrderBy(nameof(ChannelInfo.LastModifiedDate));
+                query.OrderBy(nameof(Channel.LastModifiedDate));
             }
-            else if (taxisType == TaxisType.OrderByLastEditDateDesc)
+            else if (taxisType == TaxisType.OrderByLastModifiedDateDesc)
             {
-                query.OrderByDesc(nameof(ChannelInfo.LastModifiedDate));
+                query.OrderByDesc(nameof(Channel.LastModifiedDate));
             }
             else if (taxisType == TaxisType.OrderByTaxis)
             {
-                query.OrderBy(nameof(ChannelInfo.Taxis));
+                query.OrderBy(nameof(Channel.Taxis));
             }
             else if (taxisType == TaxisType.OrderByTaxisDesc)
             {
-                query.OrderByDesc(nameof(ChannelInfo.Taxis));
+                query.OrderByDesc(nameof(Channel.Taxis));
             }
             else if (taxisType == TaxisType.OrderByRandom)
             {
@@ -138,23 +138,23 @@ namespace SS.CMS.Core.Common
 
         public static string GetContentOrderAttributeName(TaxisType taxisType)
         {
-            var retval = nameof(ContentInfo.Taxis);
+            var retval = nameof(Content.Taxis);
 
             if (taxisType == TaxisType.OrderById || taxisType == TaxisType.OrderByIdDesc)
-                retval = nameof(ContentInfo.Id);
+                retval = nameof(Content.Id);
             else if (taxisType == TaxisType.OrderByChannelId || taxisType == TaxisType.OrderByChannelIdDesc)
-                retval = nameof(ContentInfo.ChannelId);
+                retval = nameof(Content.ChannelId);
             else if (taxisType == TaxisType.OrderByAddDate || taxisType == TaxisType.OrderByAddDateDesc)
-                retval = nameof(ContentInfo.AddDate);
-            else if (taxisType == TaxisType.OrderByLastEditDate || taxisType == TaxisType.OrderByLastEditDateDesc)
-                retval = nameof(ContentInfo.LastEditDate);
+                retval = nameof(Content.AddDate);
+            else if (taxisType == TaxisType.OrderByLastModifiedDate || taxisType == TaxisType.OrderByLastModifiedDateDesc)
+                retval = nameof(Content.LastModifiedDate);
             else if (taxisType == TaxisType.OrderByHits)
-                retval = nameof(ContentInfo.Hits);
+                retval = nameof(Content.Hits);
             else if (taxisType == TaxisType.OrderByHitsByDay)
-                retval = nameof(ContentInfo.HitsByDay);
+                retval = nameof(Content.HitsByDay);
             else if (taxisType == TaxisType.OrderByHitsByWeek)
-                retval = nameof(ContentInfo.HitsByWeek);
-            else if (taxisType == TaxisType.OrderByHitsByMonth) retval = nameof(ContentInfo.HitsByMonth);
+                retval = nameof(Content.HitsByWeek);
+            else if (taxisType == TaxisType.OrderByHitsByMonth) retval = nameof(Content.HitsByMonth);
 
             return retval;
         }
@@ -185,11 +185,11 @@ namespace SS.CMS.Core.Common
             {
                 return "添加时间（降序）";
             }
-            if (type == TaxisType.OrderByLastEditDate)
+            if (type == TaxisType.OrderByLastModifiedDate)
             {
                 return "更新时间（升序）";
             }
-            if (type == TaxisType.OrderByLastEditDateDesc)
+            if (type == TaxisType.OrderByLastModifiedDateDesc)
             {
                 return "更新时间（降序）";
             }

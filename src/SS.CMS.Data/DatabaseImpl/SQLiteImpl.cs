@@ -4,6 +4,7 @@ using System.Data.Common;
 using System.Data.SQLite;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using Dapper;
 using SqlKata.Compilers;
 using SS.CMS.Data.Utils;
@@ -40,20 +41,23 @@ namespace SS.CMS.Data.DatabaseImpl
             return false;
         }
 
-        public List<string> GetTableNames(string connectionString)
+        public async Task<IList<string>> GetDatabaseNamesAsync(string connectionString)
         {
-            IEnumerable<string> tableNames;
+            return await Task.FromResult<IList<string>>(new List<string>());
+        }
+
+        public async Task<IList<string>> GetTableNamesAsync(string connectionString)
+        {
+            IEnumerable<string> tableNames = null;
 
             using (var connection = GetConnection(connectionString))
             {
                 var sqlString = "SELECT name FROM sqlite_master WHERE type='table'";
 
-                if (string.IsNullOrEmpty(sqlString)) return new List<string>();
-
-                tableNames = connection.Query<string>(sqlString);
+                tableNames = await connection.QueryAsync<string>(sqlString);
             }
 
-            return tableNames.Where(tableName => !string.IsNullOrEmpty(tableName)).ToList();
+            return tableNames != null ? tableNames.Where(tableName => !string.IsNullOrEmpty(tableName)).ToList() : new List<string>();
         }
 
         public string ColumnIncrement(string columnName, int plusNum = 1)
@@ -123,35 +127,27 @@ namespace SS.CMS.Data.DatabaseImpl
             var dataType = DataType.VarChar;
 
             dataTypeStr = Utilities.TrimAndToUpper(dataTypeStr);
-            if (dataTypeStr.StartsWith("TIMESTAMP("))
+            if (dataTypeStr.StartsWith("REAL"))
             {
-                dataType = DataType.DateTime;
+                dataType = DataType.Decimal;
             }
-            else if (dataTypeStr == "NUMBER")
+            else if (dataTypeStr == "INTEGER")
             {
                 dataType = DataType.Integer;
             }
-            else if (dataTypeStr == "NCLOB")
+            else if (dataTypeStr == "TEXT")
             {
                 dataType = DataType.Text;
             }
-            else if (dataTypeStr == "NVARCHAR2")
+            else if (dataTypeStr == "DATETIME")
             {
-                dataType = DataType.VarChar;
-            }
-            else if (dataTypeStr == "CLOB")
-            {
-                dataType = DataType.Text;
-            }
-            else if (dataTypeStr == "VARCHAR2")
-            {
-                dataType = DataType.VarChar;
+                dataType = DataType.DateTime;
             }
 
             return dataType;
         }
 
-        public List<TableColumn> GetTableColumns(string connectionString, string tableName)
+        public async Task<IList<TableColumn>> GetTableColumnsAsync(string connectionString, string tableName)
         {
             var list = new List<TableColumn>();
 
@@ -160,28 +156,12 @@ namespace SS.CMS.Data.DatabaseImpl
                 var sqlString =
                     $"PRAGMA table_info('{tableName}')";
 
-                IEnumerable<dynamic> columns = connection.Query<dynamic>(sqlString);
+                IEnumerable<dynamic> columns = await connection.QueryAsync<dynamic>(sqlString);
 
                 foreach (var column in columns)
                 {
                     var columnName = column.name;
                     var dataType = ToDataType(column.type);
-                    var percision = column.DataPrecision;
-                    var scale = column.DataScale;
-                    var charLength = column.CharLength;
-                    var dataDefault = column.DataDefault;
-
-                    if (dataType == DataType.Integer)
-                    {
-                        if (scale == 2)
-                        {
-                            dataType = DataType.Decimal;
-                        }
-                        else if (percision == 1)
-                        {
-                            dataType = DataType.Boolean;
-                        }
-                    }
 
                     var isPrimaryKey = Utilities.EqualsIgnoreCase(columnName, "id");
 
@@ -189,7 +169,7 @@ namespace SS.CMS.Data.DatabaseImpl
                     {
                         AttributeName = columnName,
                         DataType = dataType,
-                        DataLength = charLength,
+                        DataLength = 2000,
                         IsPrimaryKey = isPrimaryKey,
                         IsIdentity = isPrimaryKey
                     };

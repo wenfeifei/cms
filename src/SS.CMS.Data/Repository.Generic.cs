@@ -5,29 +5,22 @@ namespace SS.CMS.Data
 {
     public partial class Repository<T> : IRepository where T : Entity, new()
     {
-        public IDb Db { get; }
+        public IDatabase Database { get; }
         public string TableName { get; }
         public List<TableColumn> TableColumns { get; }
 
-        public Repository(IDb db)
+        public Repository(IDatabase database)
         {
-            Db = db;
+            Database = database;
             TableName = ReflectionUtils.GetTableName(typeof(T));
             TableColumns = ReflectionUtils.GetTableColumns(typeof(T));
         }
 
-        public Repository(IDb db, string tableName)
+        public Repository(IDatabase database, string tableName)
         {
-            Db = db;
+            Database = database;
             TableName = tableName;
             TableColumns = ReflectionUtils.GetTableColumns(typeof(T));
-        }
-
-        public Repository(IDb db, string tableName, List<TableColumn> tableColumns)
-        {
-            Db = db;
-            TableName = tableName;
-            TableColumns = tableColumns;
         }
 
         //        private readonly Lazy<Compiler> _compiler = new Lazy<Compiler>(() => SqlDifferences.GetCompiler(WebConfigUtils.DatabaseType));

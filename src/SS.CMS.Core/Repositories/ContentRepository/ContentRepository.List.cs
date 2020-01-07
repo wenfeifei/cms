@@ -2,15 +2,13 @@
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
+using System.Threading.Tasks;
 using Dapper;
 using SqlKata;
-using SS.CMS.Abstractions.Enums;
-using SS.CMS.Abstractions.Models;
-using SS.CMS.Core.Api.V1;
-using SS.CMS.Core.Cache;
 using SS.CMS.Core.Common;
-using SS.CMS.Core.StlParser.Models;
 using SS.CMS.Data;
+using SS.CMS.Enums;
+using SS.CMS.Models;
 using SS.CMS.Utils;
 using Attr = SS.CMS.Core.Models.Attributes.ContentAttribute;
 
@@ -18,15 +16,15 @@ namespace SS.CMS.Core.Repositories
 {
     public partial class ContentRepository
     {
-        public IList<int> GetContentIdList(int channelId)
+        public async Task<IEnumerable<int>> GetContentIdListAsync(int channelId)
         {
-            return _repository.GetAll<int>(Q
+            return await _repository.GetAllAsync<int>(Q
                 .Select(Attr.Id)
                 .Where(Attr.ChannelId, channelId)
-            ).ToList();
+            );
         }
 
-        public IList<int> GetContentIdList(int channelId, bool isPeriods, string dateFrom, string dateTo, bool? checkedState)
+        public async Task<IEnumerable<int>> GetContentIdListAsync(int channelId, bool isPeriods, string dateFrom, string dateTo, bool? checkedState)
         {
             var query = Q
                 .Select(Attr.Id)
@@ -50,44 +48,44 @@ namespace SS.CMS.Core.Repositories
                 query.Where(Attr.IsChecked, checkedState);
             }
 
-            return _repository.GetAll<int>(query).ToList();
+            return await _repository.GetAllAsync<int>(query);
         }
 
-        public IList<int> GetContentIdListCheckedByChannelId(int siteId, int channelId)
+        public async Task<IEnumerable<int>> GetContentIdListCheckedByChannelIdAsync(int siteId, int channelId)
         {
-            return _repository.GetAll<int>(Q
+            return await _repository.GetAllAsync<int>(Q
                 .Select(Attr.Id)
                 .Where(Attr.SiteId, siteId)
                 .Where(Attr.ChannelId, channelId)
                 .Where(Attr.IsChecked, true.ToString())
-            ).ToList();
+            );
         }
 
-        public IList<(int, int)> GetContentIdListByTrash(int siteId)
+        public async Task<IEnumerable<(int, int)>> GetContentIdListByTrashAsync(int siteId)
         {
-            var list = _repository.GetAll<(int contentId, int channelId)>(Q
+            var list = await _repository.GetAllAsync<(int contentId, int channelId)>(Q
                 .Select(Attr.Id, Attr.ChannelId)
                 .Where(Attr.SiteId, siteId)
                 .Where(Attr.ChannelId, "<", 0));
 
-            return list.Select(o => (Math.Abs(o.channelId), o.contentId)).ToList();
+            return list.Select(o => (Math.Abs(o.channelId), o.contentId));
         }
 
-        public List<int> GetContentIdListChecked(int channelId, TaxisType taxisType)
+        public async Task<IEnumerable<int>> GetContentIdListCheckedAsync(int channelId, TaxisType taxisType)
         {
-            return GetContentIdListChecked(channelId, 0, taxisType);
+            return await GetContentIdListCheckedAsync(channelId, 0, taxisType);
         }
 
-        private List<int> GetContentIdListChecked(int channelId, int totalNum, TaxisType taxisType)
+        private async Task<IEnumerable<int>> GetContentIdListCheckedAsync(int channelId, int totalNum, TaxisType taxisType)
         {
             var channelIdList = new List<int>
             {
                 channelId
             };
-            return GetContentIdListChecked(channelIdList, totalNum, taxisType);
+            return await GetContentIdListCheckedAsync(channelIdList, totalNum, taxisType);
         }
 
-        private List<int> GetContentIdListChecked(List<int> channelIdList, int totalNum, TaxisType taxisType)
+        private async Task<IEnumerable<int>> GetContentIdListCheckedAsync(List<int> channelIdList, int totalNum, TaxisType taxisType)
         {
             var list = new List<int>();
 
@@ -108,9 +106,7 @@ namespace SS.CMS.Core.Repositories
                 query.Limit(totalNum);
             }
 
-            list = _repository.GetAll<int>(query).ToList();
-
-            return list;
+            return await _repository.GetAllAsync<int>(query);
         }
 
         // public List<Tuple<int, int>> ApiGetContentIdListBySiteId(int siteId, ApiContentsParameters parameters, out int totalCount)
@@ -129,7 +125,7 @@ namespace SS.CMS.Core.Repositories
         //     }
         //     if (!string.IsNullOrEmpty(parameters.ChannelGroup))
         //     {
-        //         var channelIdList = ChannelManager.GetChannelIdList(siteId, parameters.ChannelGroup);
+        //         var channelIdList = _channelRepository.GetChannelIdList(siteId, parameters.ChannelGroup);
         //         if (channelIdList.Count > 0)
         //         {
         //             query.WhereIn(Attr.ChannelId, channelIdList);
@@ -164,7 +160,7 @@ namespace SS.CMS.Core.Repositories
         //         });
         //     }
 
-        //     var channelInfo = ChannelManager.GetChannelInfo(siteId, siteId);
+        //     var channelInfo = _channelRepository.GetChannelInfo(siteId, siteId);
 
         //     AddOrderByString(query, channelInfo, parameters.OrderBy);
 
@@ -215,126 +211,122 @@ namespace SS.CMS.Core.Repositories
         //     return tupleList;
         // }
 
-        public IList<(int, int)> ApiGetContentIdListByChannelId(int siteId, int channelId, int top, int skip, string like, string orderBy, NameValueCollection queryString, out int totalCount)
+        //public async Task<IList<(int, int)>> ApiGetContentIdListByChannelIdAsync(int siteId, int channelId, int top, int skip, string like, string orderBy, NameValueCollection queryString)
+        //{
+        //    var retVal = new List<(int, int)>();
+
+        //    var channelInfo = await _channelRepository.GetChannelInfoAsync(siteId, channelId);
+        //    var channelIdList = await _channelRepository.GetChannelIdListAsync(channelInfo, ScopeType.All, string.Empty, string.Empty, string.Empty);
+
+        //    var query = MinColumnsQuery.Where(Attr.SiteId, siteId).WhereIn(Attr.ChannelId, channelIdList).WhereTrue(Attr.IsChecked);
+        //    QueryOrder(query, channelInfo, orderBy);
+
+        //    var likeList = TranslateUtils.StringCollectionToStringList(StringUtils.TrimAndToLower(like));
+        //    if (queryString != null && queryString.Count > 0)
+        //    {
+        //        var columnNameList = _tableManager.GetTableColumnNameList(TableName);
+
+        //        foreach (string attributeName in queryString)
+        //        {
+        //            if (!StringUtils.ContainsIgnoreCase(columnNameList, attributeName)) continue;
+
+        //            var value = queryString[attributeName];
+
+        //            if (StringUtils.EqualsIgnoreCase(attributeName, Attr.IsChecked) || StringUtils.EqualsIgnoreCase(attributeName, Attr.IsColor) || StringUtils.EqualsIgnoreCase(attributeName, Attr.IsHot) || StringUtils.EqualsIgnoreCase(attributeName, Attr.IsRecommend) || StringUtils.EqualsIgnoreCase(attributeName, Attr.IsTop))
+        //            {
+        //                query.Where(attributeName, TranslateUtils.ToBool(value));
+        //            }
+        //            else if (StringUtils.EqualsIgnoreCase(attributeName, Attr.Id) || StringUtils.EqualsIgnoreCase(attributeName, Attr.ReferenceId) || StringUtils.EqualsIgnoreCase(attributeName, Attr.SourceId) || StringUtils.EqualsIgnoreCase(attributeName, Attr.CheckedLevel))
+        //            {
+        //                query.Where(attributeName, TranslateUtils.ToInt(value));
+        //            }
+        //            else if (likeList.Contains(attributeName))
+        //            {
+        //                query.WhereLike(attributeName, value);
+        //            }
+        //            else
+        //            {
+        //                query.WhereLike(attributeName, value);
+        //            }
+        //        }
+        //    }
+
+        //    totalCount = _repository.Count(query);
+        //    if (totalCount > 0 && skip < totalCount)
+        //    {
+        //        retVal = _repository.GetAll(query.Skip(skip).Limit(top)).Select(o => (o.ChannelId, o.Id)).ToList();
+        //    }
+
+        //    return retVal;
+        //}
+
+        private async Task<IEnumerable<int>> GetReferenceIdListAsync(IEnumerable<int> contentIdList)
         {
-            var retVal = new List<(int, int)>();
-
-            var channelInfo = ChannelManager.GetChannelInfo(siteId, channelId);
-            var channelIdList = ChannelManager.GetChannelIdList(channelInfo, ScopeType.All, string.Empty, string.Empty, string.Empty);
-
-            var query = MinColumnsQuery.Where(Attr.SiteId, siteId).WhereIn(Attr.ChannelId, channelIdList).WhereTrue(Attr.IsChecked);
-            QueryOrder(query, channelInfo, orderBy);
-
-            var likeList = TranslateUtils.StringCollectionToStringList(StringUtils.TrimAndToLower(like));
-            if (queryString != null && queryString.Count > 0)
-            {
-                var columnNameList = _tableManager.GetTableColumnNameList(TableName);
-
-                foreach (string attributeName in queryString)
-                {
-                    if (!StringUtils.ContainsIgnoreCase(columnNameList, attributeName)) continue;
-
-                    var value = queryString[attributeName];
-
-                    if (StringUtils.EqualsIgnoreCase(attributeName, Attr.IsChecked) || StringUtils.EqualsIgnoreCase(attributeName, Attr.IsColor) || StringUtils.EqualsIgnoreCase(attributeName, Attr.IsHot) || StringUtils.EqualsIgnoreCase(attributeName, Attr.IsRecommend) || StringUtils.EqualsIgnoreCase(attributeName, Attr.IsTop))
-                    {
-                        query.Where(attributeName, TranslateUtils.ToBool(value));
-                    }
-                    else if (StringUtils.EqualsIgnoreCase(attributeName, Attr.Id) || StringUtils.EqualsIgnoreCase(attributeName, Attr.ReferenceId) || StringUtils.EqualsIgnoreCase(attributeName, Attr.SourceId) || StringUtils.EqualsIgnoreCase(attributeName, Attr.CheckedLevel))
-                    {
-                        query.Where(attributeName, TranslateUtils.ToInt(value));
-                    }
-                    else if (likeList.Contains(attributeName))
-                    {
-                        query.WhereLike(attributeName, value);
-                    }
-                    else
-                    {
-                        query.WhereLike(attributeName, value);
-                    }
-                }
-            }
-
-            totalCount = _repository.Count(query);
-            if (totalCount > 0 && skip < totalCount)
-            {
-                retVal = _repository.GetAll(query.Skip(skip).Limit(top)).Select(o => (o.ChannelId, o.Id)).ToList();
-            }
-
-            return retVal;
-        }
-
-        private IList<int> GetReferenceIdList(IList<int> contentIdList)
-        {
-            return _repository.GetAll<int>(Q
+            return await _repository.GetAllAsync<int>(Q
                 .Select(Attr.Id)
                 .Where(Attr.ChannelId, ">", 0)
                 .WhereIn(Attr.ReferenceId, contentIdList)
-            ).ToList();
+            );
         }
 
-        public IList<int> GetIdListBySameTitle(int channelId, string title)
+        public async Task<IEnumerable<int>> GetIdListBySameTitleAsync(int channelId, string title)
         {
-            return _repository.GetAll<int>(Q
+            return await _repository.GetAllAsync<int>(Q
                 .Select(Attr.Id)
                 .Where(Attr.ChannelId, channelId)
                 .Where(Attr.Title, title)
-            ).ToList();
+            );
         }
 
-        public IList<int> GetChannelIdListCheckedByLastEditDateHour(int siteId, int hour)
+        public async Task<IEnumerable<int>> GetChannelIdListCheckedByLastEditDateHourAsync(int siteId, int hour)
         {
-            return _repository.GetAll<int>(Q
+            return await _repository.GetAllAsync<int>(Q
                 .Select(Attr.ChannelId)
                 .Where(Attr.SiteId, siteId)
                 .Where(Attr.IsChecked, true.ToString())
-                .WhereBetween(Attr.LastEditDate, DateTime.Now.AddHours(-hour), DateTime.Now)
+                .WhereBetween(Attr.LastModifiedDate, DateTime.Now.AddHours(-hour), DateTime.Now)
                 .Distinct()
-            ).ToList();
+            );
         }
 
-        public List<int> GetCacheContentIdList(Query query, int offset, int limit)
+        public async Task<IEnumerable<int>> GetCacheContentIdListAsync(Query query, int offset, int limit)
         {
             var list = new List<int>();
 
             QuerySelectMinColumns(query);
             query.Offset(offset).Limit(limit);
 
-            return _repository.GetAll<int>(query).ToList();
+            return await _repository.GetAllAsync<int>(query);
         }
 
-        public IList<string> GetValueListByStartString(int channelId, string name, string startString, int totalNum)
+        public async Task<IEnumerable<string>> GetValueListByStartStringAsync(int channelId, string name, string startString, int totalNum)
         {
-            return _repository.GetAll<string>(Q
+            return await _repository.GetAllAsync<string>(Q
                 .Select(name)
                 .Where(Attr.ChannelId, channelId)
-                .WhereInStr(_repository.Db.DatabaseType, name, startString)
+                .WhereInStr(_repository.Database.DatabaseType, name, startString)
                 .Distinct()
                 .Limit(totalNum)
-            ).ToList();
+            );
         }
 
-        public List<ContentInfo> GetContentInfoList(Query query, int offset, int limit)
+        public async Task<IEnumerable<Content>> GetContentInfoListAsync(Query query, int offset, int limit)
         {
-            return _repository.GetAll(query
+            return await _repository.GetAllAsync(query
                 .Offset(offset)
                 .Limit(limit)
-            ).ToList();
+            );
         }
 
-        public List<ContentCountInfo> GetContentCountInfoList()
+        public async Task<IEnumerable<ContentCount>> GetContentCountInfoListAsync()
         {
-            List<ContentCountInfo> list;
-
             var sqlString =
-                $@"SELECT {Attr.SiteId}, {Attr.ChannelId}, {Attr.IsChecked}, {Attr.CheckedLevel}, {Attr.AdminId}, COUNT(*) AS {nameof(ContentCountInfo.Count)} FROM {TableName} WHERE {Attr.ChannelId} > 0 AND {Attr.SourceId} != {SourceManager.Preview} GROUP BY {Attr.SiteId}, {Attr.ChannelId}, {Attr.IsChecked}, {Attr.CheckedLevel}, {Attr.AdminId}";
+                $@"SELECT {Attr.SiteId}, {Attr.ChannelId}, {Attr.IsChecked}, {Attr.CheckedLevel}, {Attr.UserId}, COUNT(*) AS {nameof(ContentCount.Count)} FROM {TableName} WHERE {Attr.ChannelId} > 0 AND {Attr.SourceId} != {SourceManager.Preview} GROUP BY {Attr.SiteId}, {Attr.ChannelId}, {Attr.IsChecked}, {Attr.CheckedLevel}, {Attr.UserId}";
 
-            using (var connection = _repository.Db.GetConnection())
+            using (var connection = _repository.Database.GetConnection())
             {
-                list = connection.Query<ContentCountInfo>(sqlString).ToList();
+                return await connection.QueryAsync<ContentCount>(sqlString);
             }
-
-            return list;
         }
     }
 }

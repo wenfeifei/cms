@@ -8,6 +8,7 @@ namespace SS.CMS.Data
     /// Type of database supported by the datory
     /// </summary>
     [JsonConverter(typeof(DatabaseTypeConverter))]
+    [Serializable]
     public class DatabaseType : IEquatable<DatabaseType>, IComparable<DatabaseType>
     {
         /// <summary>
@@ -35,7 +36,7 @@ namespace SS.CMS.Data
         /// </summary>
         public static readonly DatabaseType SQLite = new DatabaseType(nameof(SQLite));
 
-        public static DatabaseType GetDatabaseType(string databaseType)
+        public static DatabaseType Parse(string databaseType)
         {
             var retVal = MySql;
 

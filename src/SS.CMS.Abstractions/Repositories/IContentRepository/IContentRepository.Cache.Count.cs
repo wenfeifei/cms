@@ -1,14 +1,15 @@
-﻿using SS.CMS.Abstractions.Models;
-using SS.CMS.Abstractions.Services;
+﻿using System.Threading.Tasks;
+using SS.CMS.Models;
+using SS.CMS.Services;
 
-namespace SS.CMS.Abstractions.Repositories
+namespace SS.CMS.Repositories
 {
     public partial interface IContentRepository
     {
-        int GetCount(IPluginManager pluginManager, SiteInfo siteInfo, bool isChecked);
+        Task<int> GetCountAsync(Site siteInfo, bool isChecked, IPluginManager pluginManager);
 
-        int GetCount(IPluginManager pluginManager, SiteInfo siteInfo, ChannelInfo channelInfo, int? onlyAdminId);
+        Task<int> GetCountAsync(Site siteInfo, Channel channelInfo, int? onlyAdminId);
 
-        int GetCount(IPluginManager pluginManager, SiteInfo siteInfo, ChannelInfo channelInfo, bool isChecked);
+        Task<int> GetCountAsync(Site siteInfo, Channel channelInfo, bool isChecked);
     }
 }

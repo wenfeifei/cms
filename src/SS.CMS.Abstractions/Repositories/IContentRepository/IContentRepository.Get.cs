@@ -1,39 +1,38 @@
 ﻿using System;
-using SS.CMS.Abstractions.Enums;
-using SS.CMS.Abstractions.Models;
+using System.Threading.Tasks;
+using SS.CMS.Enums;
+using SS.CMS.Models;
 
-namespace SS.CMS.Abstractions.Repositories
+namespace SS.CMS.Repositories
 {
     public partial interface IContentRepository
     {
-        int GetMaxTaxis(int channelId, bool isTop);
+        Task<int> GetMaxTaxisAsync(int channelId, bool isTop);
 
-        bool GetChanelIdAndValue<T>(int contentId, string name, out int channelId, out T value);
+        Task<(int ChannelId, T Value)?> GetChanelIdAndValueAsync<T>(int contentId, string name);
 
-        T GetValue<T>(int contentId, string name);
+        Task<T> GetValueAsync<T>(int contentId, string name);
 
-        Tuple<int, T> GetValueWithChannelId<T>(int contentId, string name);
+        Task<int> GetTotalHitsAsync(int siteId);
 
-        int GetTotalHits(int siteId);
+        Task<int> GetFirstContentIdAsync(int siteId, int channelId);
 
-        int GetFirstContentId(int siteId, int channelId);
+        Task<int> GetContentIdAsync(int channelId, int taxis, bool isNextContent);
 
-        int GetContentId(int channelId, int taxis, bool isNextContent);
+        Task<int> GetChannelIdAsync(int contentId);
 
-        int GetChannelId(int contentId);
+        Task<int> GetContentIdAsync(int channelId, TaxisType taxisType);
 
-        int GetContentId(int channelId, TaxisType taxisType);
+        Task<int> GetTaxisToInsertAsync(int channelId, bool isTop);
 
-        int GetTaxisToInsert(int channelId, bool isTop);
+        Task<int> GetSequenceAsync(int channelId, int contentId);
 
-        int GetSequence(int channelId, int contentId);
+        Task<int> GetCountCheckedImageAsync(int siteId, int channelId);
 
-        int GetCountCheckedImage(int siteId, int channelId);
+        Task<int> GetCountOfContentAddAsync(int siteId, int channelId, ScopeType scope, DateTime begin, DateTime end, int userId, bool? checkedState);
 
-        int GetCountOfContentAdd(int siteId, int channelId, ScopeType scope, DateTime begin, DateTime end, string userName, bool? checkedState);
+        Task<int> GetCountOfContentUpdateAsync(int siteId, int channelId, ScopeType scope, DateTime begin, DateTime end, int userId);
 
-        int GetCountOfContentUpdate(int siteId, int channelId, ScopeType scope, DateTime begin, DateTime end, string userName);
-
-        ContentInfo GetCacheContentInfo(int contentId);
+        Task<Content> GetCacheContentInfoAsync(int contentId);
     }
 }

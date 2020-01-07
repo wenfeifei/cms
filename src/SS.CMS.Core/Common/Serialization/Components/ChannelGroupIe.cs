@@ -1,9 +1,7 @@
 ﻿using System.Collections.Generic;
-using SS.CMS.Abstractions.Models;
-using SS.CMS.Abstractions.Repositories;
-using SS.CMS.Core.Cache;
-using SS.CMS.Core.Common;
-using SS.CMS.Core.Models;
+using System.Threading.Tasks;
+using SS.CMS.Models;
+using SS.CMS.Repositories;
 using SS.CMS.Utils;
 using SS.CMS.Utils.Atom.Atom.Core;
 
@@ -11,30 +9,30 @@ namespace SS.CMS.Core.Serialization.Components
 {
     public static class ChannelGroupIe
     {
-        public static AtomEntry Export(ChannelGroupInfo groupInfo)
+        public static AtomEntry Export(ChannelGroup groupInfo)
         {
             var entry = AtomUtility.GetEmptyEntry();
 
             AtomUtility.AddDcElement(entry.AdditionalElements, "IsNodeGroup", true.ToString());
-            AtomUtility.AddDcElement(entry.AdditionalElements, new List<string> { nameof(ChannelGroupInfo.GroupName), "NodeGroupName" }, groupInfo.GroupName);
-            AtomUtility.AddDcElement(entry.AdditionalElements, nameof(ChannelGroupInfo.Taxis), groupInfo.Taxis.ToString());
-            AtomUtility.AddDcElement(entry.AdditionalElements, nameof(ChannelGroupInfo.Description), groupInfo.Description);
+            AtomUtility.AddDcElement(entry.AdditionalElements, new List<string> { nameof(ChannelGroup.GroupName), "NodeGroupName" }, groupInfo.GroupName);
+            AtomUtility.AddDcElement(entry.AdditionalElements, nameof(ChannelGroup.Taxis), groupInfo.Taxis.ToString());
+            AtomUtility.AddDcElement(entry.AdditionalElements, nameof(ChannelGroup.Description), groupInfo.Description);
 
             return entry;
         }
 
-        public static bool Import(AtomEntry entry, int siteId, IChannelGroupRepository channelGroupRepository)
+        public static async Task<bool> ImportAsync(AtomEntry entry, int siteId, IChannelGroupRepository channelGroupRepository)
         {
             var isNodeGroup = TranslateUtils.ToBool(AtomUtility.GetDcElementContent(entry.AdditionalElements, "IsNodeGroup"));
             if (!isNodeGroup) return false;
 
-            var groupName = AtomUtility.GetDcElementContent(entry.AdditionalElements, new List<string> { nameof(ChannelGroupInfo.GroupName), "NodeGroupName" });
+            var groupName = AtomUtility.GetDcElementContent(entry.AdditionalElements, new List<string> { nameof(ChannelGroup.GroupName), "NodeGroupName" });
             if (string.IsNullOrEmpty(groupName)) return true;
-            if (channelGroupRepository.IsExists(siteId, groupName)) return true;
+            if (await channelGroupRepository.IsExistsAsync(siteId, groupName)) return true;
 
-            var taxis = TranslateUtils.ToInt(AtomUtility.GetDcElementContent(entry.AdditionalElements, nameof(ChannelGroupInfo.Taxis)));
-            var description = AtomUtility.GetDcElementContent(entry.AdditionalElements, nameof(ChannelGroupInfo.Description));
-            channelGroupRepository.Insert(new ChannelGroupInfo
+            var taxis = TranslateUtils.ToInt(AtomUtility.GetDcElementContent(entry.AdditionalElements, nameof(ChannelGroup.Taxis)));
+            var description = AtomUtility.GetDcElementContent(entry.AdditionalElements, nameof(ChannelGroup.Description));
+            await channelGroupRepository.InsertAsync(new ChannelGroup
             {
                 GroupName = groupName,
                 SiteId = siteId,

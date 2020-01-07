@@ -1,10 +1,7 @@
 ﻿using System.Collections.Specialized;
-using SS.CMS.Core.Cache;
-using SS.CMS.Core.Cache.Stl;
-using SS.CMS.Core.Common;
+using System.Threading.Tasks;
 using SS.CMS.Core.Models.Attributes;
 using SS.CMS.Core.StlParser.Models;
-using SS.CMS.Core.StlParser.Utility;
 using SS.CMS.Utils;
 using SS.CMS.Utils.Enumerations;
 
@@ -46,7 +43,7 @@ namespace SS.CMS.Core.StlParser.StlElement
         [StlAttribute(Title = "当指定的图片不存在时显示的图片地址")]
         private const string AltSrc = nameof(AltSrc);
 
-        public static string Parse(ParseContext parseContext)
+        public static async Task<object> ParseAsync(ParseContext parseContext)
         {
             var isGetPicUrlFromAttribute = false;
             var channelIndex = string.Empty;
@@ -66,7 +63,7 @@ namespace SS.CMS.Core.StlParser.StlElement
 
                 if (StringUtils.EqualsIgnoreCase(name, ChannelIndex))
                 {
-                    channelIndex = parseContext.ReplaceStlEntitiesForAttributeValue(value);
+                    channelIndex = await parseContext.ReplaceStlEntitiesForAttributeValueAsync(value);
                     if (!string.IsNullOrEmpty(channelIndex))
                     {
                         isGetPicUrlFromAttribute = true;
@@ -74,7 +71,7 @@ namespace SS.CMS.Core.StlParser.StlElement
                 }
                 else if (StringUtils.EqualsIgnoreCase(name, ChannelName))
                 {
-                    channelName = parseContext.ReplaceStlEntitiesForAttributeValue(value);
+                    channelName = await parseContext.ReplaceStlEntitiesForAttributeValueAsync(value);
                     if (!string.IsNullOrEmpty(channelName))
                     {
                         isGetPicUrlFromAttribute = true;
@@ -118,11 +115,11 @@ namespace SS.CMS.Core.StlParser.StlElement
                 }
                 else if (StringUtils.EqualsIgnoreCase(name, Src))
                 {
-                    src = parseContext.ReplaceStlEntitiesForAttributeValue(value);
+                    src = await parseContext.ReplaceStlEntitiesForAttributeValueAsync(value);
                 }
                 else if (StringUtils.EqualsIgnoreCase(name, AltSrc))
                 {
-                    altSrc = parseContext.ReplaceStlEntitiesForAttributeValue(value);
+                    altSrc = await parseContext.ReplaceStlEntitiesForAttributeValueAsync(value);
                 }
                 else
                 {
@@ -130,10 +127,10 @@ namespace SS.CMS.Core.StlParser.StlElement
                 }
             }
 
-            return ParseImpl(parseContext, attributes, isGetPicUrlFromAttribute, channelIndex, channelName, upLevel, topLevel, type, no, isOriginal, src, altSrc);
+            return await ParseImplAsync(parseContext, attributes, isGetPicUrlFromAttribute, channelIndex, channelName, upLevel, topLevel, type, no, isOriginal, src, altSrc);
         }
 
-        private static string ParseImpl(ParseContext parseContext, NameValueCollection attributes, bool isGetPicUrlFromAttribute, string channelIndex, string channelName, int upLevel, int topLevel, string type, int no, bool isOriginal, string src, string altSrc)
+        private static async Task<object> ParseImplAsync(ParseContext parseContext, NameValueCollection attributes, bool isGetPicUrlFromAttribute, string channelIndex, string channelName, int upLevel, int topLevel, string type, int no, bool isOriginal, string src, string altSrc)
         {
             var parsedContent = string.Empty;
 
@@ -159,7 +156,7 @@ namespace SS.CMS.Core.StlParser.StlElement
 
                 if (contextType == EContextType.Content)//获取内容图片
                 {
-                    var contentInfo = parseContext.ContentInfo;
+                    var contentInfo = await parseContext.GetContentInfoAsync();
 
                     if (isOriginal)
                     {
@@ -167,12 +164,13 @@ namespace SS.CMS.Core.StlParser.StlElement
                         {
                             var targetChannelId = contentInfo.SourceId;
                             //var targetSiteId = DataProvider.ChannelDao.GetSiteId(targetChannelId);
-                            var targetSiteId = StlChannelCache.GetSiteId(targetChannelId);
-                            var targetSiteInfo = parseContext.SiteRepository.GetSiteInfo(targetSiteId);
-                            var targetNodeInfo = ChannelManager.GetChannelInfo(targetSiteId, targetChannelId);
+                            var targetSiteId = await parseContext.ChannelRepository.GetSiteIdAsync(targetChannelId);
+                            var targetSiteInfo = await parseContext.SiteRepository.GetSiteAsync(targetSiteId);
+                            var targetNodeInfo = await parseContext.ChannelRepository.GetChannelAsync(targetChannelId);
+                            var targetContentRepository = parseContext.ChannelRepository.GetContentRepository(targetSiteInfo, targetNodeInfo);
 
                             //var targetContentInfo = DataProvider.ContentDao.GetContentInfo(tableStyle, tableName, contentInfo.ReferenceId);
-                            var targetContentInfo = targetNodeInfo.ContentRepository.GetContentInfo(targetSiteInfo, targetNodeInfo, contentInfo.ReferenceId);
+                            var targetContentInfo = await targetContentRepository.GetContentInfoAsync(contentInfo.ReferenceId);
                             if (targetContentInfo != null && targetContentInfo.ChannelId > 0)
                             {
                                 contentInfo = targetContentInfo;
@@ -182,7 +180,10 @@ namespace SS.CMS.Core.StlParser.StlElement
 
                     if (contentInfo == null)
                     {
-                        contentInfo = parseContext.ChannelInfo.ContentRepository.GetContentInfo(parseContext.SiteInfo, parseContext.ChannelInfo, contentId);
+                        var channelInfo = await parseContext.GetChannelAsync();
+                        var contentRepository = parseContext.ChannelRepository.GetContentRepository(parseContext.SiteInfo, channelInfo);
+
+                        contentInfo = await contentRepository.GetContentInfoAsync(contentId);
                     }
 
                     if (contentInfo != null)
@@ -213,11 +214,11 @@ namespace SS.CMS.Core.StlParser.StlElement
                 }
                 else if (contextType == EContextType.Channel)//获取栏目图片
                 {
-                    var channelId = StlDataUtility.GetChannelIdByLevel(parseContext.SiteId, parseContext.ChannelId, upLevel, topLevel);
+                    var channelId = await parseContext.GetChannelIdByLevelAsync(parseContext.SiteId, parseContext.ChannelId, upLevel, topLevel);
 
-                    channelId = StlDataUtility.GetChannelIdByChannelIdOrChannelIndexOrChannelName(parseContext.SiteId, channelId, channelIndex, channelName);
+                    channelId = await parseContext.GetChannelIdByChannelIdOrChannelIndexOrChannelNameAsync(parseContext.SiteId, channelId, channelIndex, channelName);
 
-                    var channel = ChannelManager.GetChannelInfo(parseContext.SiteId, channelId);
+                    var channel = await parseContext.ChannelRepository.GetChannelAsync(channelId);
 
                     picUrl = channel.ImageUrl;
                 }
@@ -237,17 +238,16 @@ namespace SS.CMS.Core.StlParser.StlElement
                 var extension = PathUtils.GetExtension(picUrl);
                 if (EFileSystemTypeUtils.IsFlash(extension))
                 {
-                    parsedContent = StlFlash.Parse(parseContext);
+                    return await StlFlash.ParseAsync(parseContext);
                 }
-                else if (EFileSystemTypeUtils.IsPlayer(extension))
+
+                if (EFileSystemTypeUtils.IsPlayer(extension))
                 {
-                    parsedContent = StlPlayer.Parse(parseContext);
+                    return await StlPlayer.ParseAsync(parseContext);
                 }
-                else
-                {
-                    attributes["src"] = parseContext.UrlManager.ParseNavigationUrl(parseContext.SiteInfo, picUrl, parseContext.IsLocal);
-                    parsedContent = $@"<img {TranslateUtils.ToAttributesString(attributes)}>";
-                }
+
+                attributes["src"] = parseContext.UrlManager.ParseNavigationUrl(parseContext.SiteInfo, picUrl, parseContext.IsLocal);
+                parsedContent = $@"<img {TranslateUtils.ToAttributesString(attributes)}>";
             }
 
             return parsedContent;

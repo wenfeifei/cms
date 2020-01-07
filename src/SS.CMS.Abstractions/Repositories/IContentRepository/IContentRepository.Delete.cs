@@ -1,7 +1,9 @@
-﻿namespace SS.CMS.Abstractions.Repositories
+﻿using System.Threading.Tasks;
+
+namespace SS.CMS.Repositories
 {
     public partial interface IContentRepository
     {
-        void Delete(int siteId, int contentId);
+        Task DeleteAsync(int siteId, int contentId);
     }
 }

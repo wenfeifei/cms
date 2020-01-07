@@ -2,21 +2,18 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using SS.CMS.Abstractions;
-using SS.CMS.Abstractions.Enums;
-using SS.CMS.Abstractions.Models;
-using SS.CMS.Abstractions.Services;
-using SS.CMS.Core.Cache;
-using SS.CMS.Core.Common;
+using System.Threading.Tasks;
 using SS.CMS.Core.Models.Attributes;
-using SS.CMS.Core.Models.Enumerations;
+using SS.CMS.Enums;
+using SS.CMS.Models;
+using SS.CMS.Services;
 using SS.CMS.Utils;
 
 namespace SS.CMS.Core.Services
 {
     public partial class FileManager
     {
-        public void Translate(ICreateManager createManager, SiteInfo siteInfo, int channelId, int contentId, string translateCollection, TranslateContentType translateType)
+        public async Task TranslateAsync(ICreateManager createManager, Site siteInfo, int channelId, int contentId, string translateCollection, TranslateContentType translateType)
         {
             var translateList = TranslateUtils.StringCollectionToStringList(translateCollection);
             foreach (var translate in translateList)
@@ -29,20 +26,23 @@ namespace SS.CMS.Core.Services
                 var targetSiteId = TranslateUtils.ToInt(translates[0]);
                 var targetChannelId = TranslateUtils.ToInt(translates[1]);
 
-                Translate(createManager, siteInfo, channelId, contentId, targetSiteId, targetChannelId, translateType);
+                await TranslateAsync(createManager, siteInfo, channelId, contentId, targetSiteId, targetChannelId, translateType);
             }
         }
 
-        public void Translate(ICreateManager createManager, SiteInfo siteInfo, int channelId, int contentId, int targetSiteId, int targetChannelId, TranslateContentType translateType)
+        public async Task TranslateAsync(ICreateManager createManager, Site siteInfo, int channelId, int contentId, int targetSiteId, int targetChannelId, TranslateContentType translateType)
         {
             if (siteInfo == null || channelId <= 0 || contentId <= 0 || targetSiteId <= 0 || targetChannelId <= 0) return;
 
-            var targetSiteInfo = _siteRepository.GetSiteInfo(targetSiteId);
-            var targetChannelInfo = ChannelManager.GetChannelInfo(targetSiteId, targetChannelId);
-            var targetTableName = ChannelManager.GetTableName(_pluginManager, targetSiteInfo, targetChannelInfo);
+            var targetSiteInfo = await _siteRepository.GetSiteAsync(targetSiteId);
+            var targetChannelInfo = await _channelRepository.GetChannelAsync(targetChannelId);
+            var targetTableName = _channelRepository.GetTableName(targetSiteInfo, targetChannelInfo);
+            var targetContentRepository = _channelRepository.GetContentRepository(siteInfo, targetChannelInfo);
 
-            var channelInfo = ChannelManager.GetChannelInfo(siteInfo.Id, channelId);
-            var contentInfo = channelInfo.ContentRepository.GetContentInfo(siteInfo, channelInfo, contentId);
+            var channelInfo = await _channelRepository.GetChannelAsync(channelId);
+            var contentRepository = _channelRepository.GetContentRepository(siteInfo, channelInfo);
+
+            var contentInfo = await contentRepository.GetContentInfoAsync(contentId);
 
             if (contentInfo == null) return;
 
@@ -55,9 +55,9 @@ namespace SS.CMS.Core.Services
                 contentInfo.ChannelId = targetChannelId;
                 contentInfo.Set(ContentAttribute.TranslateContentType, TranslateContentType.Copy.ToString());
                 //contentInfo.Attributes.Add(ContentAttribute.TranslateContentType, TranslateContentType.Copy.ToString());
-                var theContentId = targetChannelInfo.ContentRepository.Insert(targetSiteInfo, targetChannelInfo, contentInfo);
+                var theContentId = await targetContentRepository.InsertAsync(targetSiteInfo, targetChannelInfo, contentInfo);
 
-                foreach (var service in _pluginManager.Services)
+                foreach (var service in await _pluginManager.GetServicesAsync())
                 {
                     try
                     {
@@ -65,12 +65,12 @@ namespace SS.CMS.Core.Services
                     }
                     catch (Exception ex)
                     {
-                        LogUtils.AddErrorLog(service.PluginId, ex, nameof(service.OnContentTranslateCompleted));
+                        await _errorLogRepository.AddErrorLogAsync(service.PluginId, ex, nameof(service.OnContentTranslateCompleted));
                     }
                 }
 
-                createManager.CreateContent(targetSiteInfo.Id, contentInfo.ChannelId, theContentId);
-                createManager.TriggerContentChangedEvent(targetSiteInfo.Id, contentInfo.ChannelId);
+                await createManager.AddCreateContentTaskAsync(targetSiteInfo.Id, contentInfo.ChannelId, theContentId);
+                await createManager.TriggerContentChangedEventAsync(targetSiteInfo.Id, contentInfo.ChannelId);
             }
             else if (translateType == TranslateContentType.Cut)
             {
@@ -82,9 +82,9 @@ namespace SS.CMS.Core.Services
                 contentInfo.Set(ContentAttribute.TranslateContentType, TranslateContentType.Cut.ToString());
                 //contentInfo.Attributes.Add(ContentAttribute.TranslateContentType, TranslateContentType.Cut.ToString());
 
-                var newContentId = targetChannelInfo.ContentRepository.Insert(targetSiteInfo, targetChannelInfo, contentInfo);
+                var newContentId = await targetContentRepository.InsertAsync(targetSiteInfo, targetChannelInfo, contentInfo);
 
-                foreach (var service in _pluginManager.Services)
+                foreach (var service in await _pluginManager.GetServicesAsync())
                 {
                     try
                     {
@@ -92,16 +92,16 @@ namespace SS.CMS.Core.Services
                     }
                     catch (Exception ex)
                     {
-                        LogUtils.AddErrorLog(service.PluginId, ex, nameof(service.OnContentTranslateCompleted));
+                        await _errorLogRepository.AddErrorLogAsync(service.PluginId, ex, nameof(service.OnContentTranslateCompleted));
                     }
                 }
 
-                Delete(siteInfo, channelInfo, contentId);
+                await DeleteAsync(siteInfo, channelInfo, contentId);
 
                 //DataProvider.ContentRepository.DeleteContents(siteInfo.Id, tableName, TranslateUtils.ToIntList(contentId), channelId);
 
-                createManager.CreateContent(targetSiteInfo.Id, contentInfo.ChannelId, newContentId);
-                createManager.TriggerContentChangedEvent(targetSiteInfo.Id, contentInfo.ChannelId);
+                await createManager.AddCreateContentTaskAsync(targetSiteInfo.Id, contentInfo.ChannelId, newContentId);
+                await createManager.TriggerContentChangedEventAsync(targetSiteInfo.Id, contentInfo.ChannelId);
             }
             else if (translateType == TranslateContentType.Reference)
             {
@@ -113,10 +113,10 @@ namespace SS.CMS.Core.Services
                 contentInfo.ReferenceId = contentId;
                 contentInfo.Set(ContentAttribute.TranslateContentType, TranslateContentType.Reference.ToString());
                 //contentInfo.Attributes.Add(ContentAttribute.TranslateContentType, TranslateContentType.Reference.ToString());
-                int theContentId = targetChannelInfo.ContentRepository.Insert(targetSiteInfo, targetChannelInfo, contentInfo);
+                int theContentId = await targetContentRepository.InsertAsync(targetSiteInfo, targetChannelInfo, contentInfo);
 
-                createManager.CreateContent(targetSiteInfo.Id, contentInfo.ChannelId, theContentId);
-                createManager.TriggerContentChangedEvent(targetSiteInfo.Id, contentInfo.ChannelId);
+                await createManager.AddCreateContentTaskAsync(targetSiteInfo.Id, contentInfo.ChannelId, theContentId);
+                await createManager.TriggerContentChangedEventAsync(targetSiteInfo.Id, contentInfo.ChannelId);
             }
             else if (translateType == TranslateContentType.ReferenceContent)
             {
@@ -129,9 +129,9 @@ namespace SS.CMS.Core.Services
                 contentInfo.ChannelId = targetChannelId;
                 contentInfo.ReferenceId = contentId;
                 contentInfo.Set(ContentAttribute.TranslateContentType, TranslateContentType.ReferenceContent.ToString());
-                var theContentId = targetChannelInfo.ContentRepository.Insert(targetSiteInfo, targetChannelInfo, contentInfo);
+                var theContentId = await targetContentRepository.InsertAsync(targetSiteInfo, targetChannelInfo, contentInfo);
 
-                foreach (var service in _pluginManager.Services)
+                foreach (var service in await _pluginManager.GetServicesAsync())
                 {
                     try
                     {
@@ -139,24 +139,25 @@ namespace SS.CMS.Core.Services
                     }
                     catch (Exception ex)
                     {
-                        LogUtils.AddErrorLog(service.PluginId, ex, nameof(service.OnContentTranslateCompleted));
+                        await _errorLogRepository.AddErrorLogAsync(service.PluginId, ex, nameof(service.OnContentTranslateCompleted));
                     }
                 }
 
-                createManager.CreateContent(targetSiteInfo.Id, contentInfo.ChannelId, theContentId);
-                createManager.TriggerContentChangedEvent(targetSiteInfo.Id, contentInfo.ChannelId);
+                await createManager.AddCreateContentTaskAsync(targetSiteInfo.Id, contentInfo.ChannelId, theContentId);
+                await createManager.TriggerContentChangedEventAsync(targetSiteInfo.Id, contentInfo.ChannelId);
             }
         }
 
-        public void Delete(SiteInfo siteInfo, ChannelInfo channelInfo, int contentId)
+        public async Task DeleteAsync(Site siteInfo, Channel channelInfo, int contentId)
         {
             if (siteInfo == null || contentId <= 0) return;
 
-            channelInfo.ContentRepository.Delete(siteInfo.Id, contentId);
+            var contentRepository = _channelRepository.GetContentRepository(siteInfo, channelInfo);
+            await contentRepository.DeleteAsync(siteInfo.Id, contentId);
 
-            TagUtils.RemoveTags(siteInfo.Id, contentId);
+            await _tagRepository.RemoveTagsAsync(siteInfo.Id, contentId);
 
-            foreach (var service in _pluginManager.Services)
+            foreach (var service in await _pluginManager.GetServicesAsync())
             {
                 try
                 {
@@ -164,14 +165,14 @@ namespace SS.CMS.Core.Services
                 }
                 catch (Exception ex)
                 {
-                    LogUtils.AddErrorLog(service.PluginId, ex, nameof(service.OnContentDeleteCompleted));
+                    await _errorLogRepository.AddErrorLogAsync(service.PluginId, ex, nameof(service.OnContentDeleteCompleted));
                 }
             }
 
-            channelInfo.ContentRepository.RemoveCache(channelInfo.ContentRepository.TableName, channelInfo.Id);
+            contentRepository.RemoveCache(contentRepository.TableName, channelInfo.Id);
         }
 
-        public string TextEditorContentEncode(SiteInfo siteInfo, string content)
+        public string TextEditorContentEncode(Site siteInfo, string content)
         {
             if (siteInfo == null) return content;
 
@@ -201,7 +202,7 @@ namespace SS.CMS.Core.Services
             return builder.ToString();
         }
 
-        public string TextEditorContentDecode(SiteInfo siteInfo, string content, bool isLocal)
+        public string TextEditorContentDecode(Site siteInfo, string content, bool isLocal)
         {
             if (siteInfo == null) return content;
 
@@ -228,63 +229,60 @@ namespace SS.CMS.Core.Services
             return builder.ToString();
         }
 
-        public void DeleteContentsByPage(SiteInfo siteInfo, List<int> channelIdList)
+        public async Task DeleteContentsByPageAsync(Site siteInfo, List<int> channelIdList)
         {
             foreach (var channelId in channelIdList)
             {
-                var channelInfo = ChannelManager.GetChannelInfo(siteInfo.Id, channelId);
-                var contentIdList = channelInfo.ContentRepository.GetContentIdList(channelId);
-                if (contentIdList.Count > 0)
+                var channelInfo = await _channelRepository.GetChannelAsync(channelId);
+                var contentRepository = _channelRepository.GetContentRepository(siteInfo, channelInfo);
+                var contentIdList = await contentRepository.GetContentIdListAsync(channelId);
+                foreach (var contentId in contentIdList)
                 {
-                    foreach (var contentId in contentIdList)
-                    {
-                        var filePath = _pathManager.GetContentPageFilePath(siteInfo, channelId, contentId, 0);
-                        FileUtils.DeleteFileIfExists(filePath);
-                        DeletePagingFiles(filePath);
-                        DirectoryUtils.DeleteEmptyDirectory(DirectoryUtils.GetDirectoryPath(filePath));
-                    }
+                    var filePath = await _pathManager.GetContentPageFilePathAsync(siteInfo, channelId, contentId, 0);
+                    FileUtils.DeleteFileIfExists(filePath);
+                    DeletePagingFiles(filePath);
+                    DirectoryUtils.DeleteEmptyDirectory(DirectoryUtils.GetDirectoryPath(filePath));
                 }
             }
         }
 
-        public void DeleteContents(SiteInfo siteInfo, int channelId, IList<int> contentIdList)
+        public async Task DeleteContentsAsync(Site siteInfo, int channelId, IEnumerable<int> contentIdList)
         {
             foreach (var contentId in contentIdList)
             {
-                DeleteContent(siteInfo, channelId, contentId);
+                await DeleteContentAsync(siteInfo, channelId, contentId);
             }
         }
 
-        public void DeleteContent(SiteInfo siteInfo, int channelId, int contentId)
+        public async Task DeleteContentAsync(Site siteInfo, int channelId, int contentId)
         {
-            var filePath = _pathManager.GetContentPageFilePath(siteInfo, channelId, contentId, 0);
+            var filePath = await _pathManager.GetContentPageFilePathAsync(siteInfo, channelId, contentId, 0);
             FileUtils.DeleteFileIfExists(filePath);
         }
 
-        public void DeleteChannels(SiteInfo siteInfo, List<int> channelIdList)
+        public async Task DeleteChannelsAsync(Site siteInfo, List<int> channelIdList)
         {
             foreach (var channelId in channelIdList)
             {
-                var channelInfo = ChannelManager.GetChannelInfo(siteInfo.Id, channelId);
-                var filePath = _pathManager.GetChannelPageFilePath(siteInfo, channelId, 0);
+                var channelInfo = await _channelRepository.GetChannelAsync(channelId);
+                var contentRepository = _channelRepository.GetContentRepository(siteInfo, channelInfo);
+
+                var filePath = await _pathManager.GetChannelPageFilePathAsync(siteInfo, channelId, 0);
 
                 FileUtils.DeleteFileIfExists(filePath);
 
-                var contentIdList = channelInfo.ContentRepository.GetContentIdList(channelId);
-                if (contentIdList.Count > 0)
-                {
-                    DeleteContents(siteInfo, channelId, contentIdList);
-                }
+                var contentIdList = await contentRepository.GetContentIdListAsync(channelId);
+                await DeleteContentsAsync(siteInfo, channelId, contentIdList);
             }
         }
 
-        public void DeleteChannelsByPage(SiteInfo siteInfo, List<int> channelIdList)
+        public async Task DeleteChannelsByPageAsync(Site siteInfo, List<int> channelIdList)
         {
             foreach (var channelId in channelIdList)
             {
                 if (channelId != siteInfo.Id)
                 {
-                    var filePath = _pathManager.GetChannelPageFilePath(siteInfo, channelId, 0);
+                    var filePath = await _pathManager.GetChannelPageFilePathAsync(siteInfo, channelId, 0);
                     FileUtils.DeleteFileIfExists(filePath);
                     DeletePagingFiles(filePath);
                     DirectoryUtils.DeleteEmptyDirectory(DirectoryUtils.GetDirectoryPath(filePath));
@@ -312,11 +310,11 @@ namespace SS.CMS.Core.Services
             }
         }
 
-        public void DeleteFiles(SiteInfo siteInfo, List<int> templateIdList)
+        public async Task DeleteFilesAsync(Site siteInfo, List<int> templateIdList)
         {
             foreach (var templateId in templateIdList)
             {
-                var templateInfo = _templateRepository.GetTemplateInfo(siteInfo.Id, templateId);
+                var templateInfo = await _templateRepository.GetTemplateInfoAsync(templateId);
                 if (templateInfo == null || templateInfo.Type != TemplateType.FileTemplate)
                 {
                     return;

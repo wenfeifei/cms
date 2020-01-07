@@ -2,10 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Text;
-using SS.CMS.Abstractions.Models;
+using System.Threading.Tasks;
 using SS.CMS.Core.Common;
 using SS.CMS.Core.Models;
 using SS.CMS.Core.Models.Attributes;
+using SS.CMS.Models;
 using SS.CMS.Utils;
 using SS.CMS.Utils.Enumerations;
 
@@ -14,7 +15,7 @@ namespace SS.CMS.Core.Services
     public partial class FileManager
     {
         //将编辑器中图片上传至本机
-        public string SaveImage(SiteInfo siteInfo, string content)
+        public string SaveImage(Site siteInfo, string content)
         {
             var originalImageSrcs = RegexUtils.GetOriginalImageSrcs(content);
             foreach (var originalImageSrc in originalImageSrcs)
@@ -51,7 +52,7 @@ namespace SS.CMS.Core.Services
             return content;
         }
 
-        public void AddWaterMark(SiteInfo siteInfo, string imagePath)
+        public void AddWaterMark(Site siteInfo, string imagePath)
         {
             try
             {
@@ -84,7 +85,7 @@ namespace SS.CMS.Core.Services
             }
         }
 
-        public void MoveFile(SiteInfo sourceSiteInfo, SiteInfo destSiteInfo, string relatedUrl)
+        public void MoveFile(Site sourceSiteInfo, Site destSiteInfo, string relatedUrl)
         {
             if (!string.IsNullOrEmpty(relatedUrl))
             {
@@ -97,7 +98,7 @@ namespace SS.CMS.Core.Services
             }
         }
 
-        public void MoveFileByContentInfo(SiteInfo sourceSiteInfo, SiteInfo destSiteInfo, ContentInfo contentInfo)
+        public void MoveFileByContentInfo(Site sourceSiteInfo, Site destSiteInfo, Content contentInfo)
         {
             if (contentInfo == null || sourceSiteInfo.Id == destSiteInfo.Id) return;
 
@@ -160,7 +161,7 @@ namespace SS.CMS.Core.Services
             }
         }
 
-        public void MoveFileByVirtualUrl(SiteInfo sourceSiteInfo, SiteInfo destSiteInfo, string fileVirtualUrl)
+        public void MoveFileByVirtualUrl(Site sourceSiteInfo, Site destSiteInfo, string fileVirtualUrl)
         {
             if (string.IsNullOrEmpty(fileVirtualUrl) || sourceSiteInfo.Id == destSiteInfo.Id) return;
 
@@ -177,12 +178,12 @@ namespace SS.CMS.Core.Services
             }
         }
 
-        public void MoveFiles(int sourceSiteId, int targetSiteId, List<string> relatedUrls)
+        public async Task MoveFilesAsync(int sourceSiteId, int targetSiteId, List<string> relatedUrls)
         {
             if (sourceSiteId == targetSiteId) return;
 
-            var siteInfo = _siteRepository.GetSiteInfo(sourceSiteId);
-            var targetSiteInfo = _siteRepository.GetSiteInfo(targetSiteId);
+            var siteInfo = await _siteRepository.GetSiteAsync(sourceSiteId);
+            var targetSiteInfo = await _siteRepository.GetSiteAsync(targetSiteId);
             if (siteInfo == null || targetSiteInfo == null) return;
 
             foreach (var relatedUrl in relatedUrls)
@@ -194,9 +195,9 @@ namespace SS.CMS.Core.Services
             }
         }
 
-        public void AddWaterMark(int siteId, string filePath)
+        public async Task AddWaterMarkAsync(int siteId, string filePath)
         {
-            var siteInfo = _siteRepository.GetSiteInfo(siteId);
+            var siteInfo = await _siteRepository.GetSiteAsync(siteId);
             AddWaterMark(siteInfo, filePath);
         }
     }

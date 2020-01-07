@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections;
-using SS.CMS.Abstractions.Models;
-using SS.CMS.Abstractions.Repositories;
+using System.Linq;
+using System.Threading.Tasks;
+using SS.CMS.Models;
+using SS.CMS.Repositories;
 using SS.CMS.Utils;
 
 namespace SS.CMS.Core.Services
@@ -26,13 +28,13 @@ namespace SS.CMS.Core.Services
             }
         }
 
-        public void DeleteSiteFiles(SiteInfo siteInfo)
+        public async Task DeleteSiteFilesAsync(Site siteInfo)
         {
             if (siteInfo == null) return;
 
             var sitePath = _pathManager.GetSitePath(siteInfo);
 
-            if (siteInfo.Root)
+            if (siteInfo.IsRoot)
             {
                 var filePaths = DirectoryUtils.GetFilePaths(sitePath);
                 foreach (var filePath in filePaths)
@@ -44,13 +46,13 @@ namespace SS.CMS.Core.Services
                     }
                 }
 
-                var siteDirList = _siteRepository.GetLowerSiteDirListThatNotIsRoot();
+                var siteDirList = await _siteRepository.GetSiteDirListAsync(0);
 
                 var directoryPaths = DirectoryUtils.GetDirectoryPaths(sitePath);
                 foreach (var subDirectoryPath in directoryPaths)
                 {
                     var directoryName = PathUtils.GetDirectoryName(subDirectoryPath, false);
-                    if (!_pathManager.IsSystemDirectory(directoryName) && !siteDirList.Contains(directoryName.ToLower()))
+                    if (!StringUtils.ContainsIgnoreCase(siteDirList, directoryName))
                     {
                         DirectoryUtils.DeleteDirectoryIfExists(subDirectoryPath);
                     }
@@ -63,11 +65,11 @@ namespace SS.CMS.Core.Services
             }
         }
 
-        public void ImportSiteFiles(SiteInfo siteInfo, string siteTemplatePath, bool isOverride)
+        public async Task ImportSiteFilesAsync(Site siteInfo, string siteTemplatePath, bool isOverride)
         {
             var sitePath = _pathManager.GetSitePath(siteInfo);
 
-            if (siteInfo.Root)
+            if (siteInfo.IsRoot)
             {
                 var filePaths = DirectoryUtils.GetFilePaths(siteTemplatePath);
                 foreach (var filePath in filePaths)
@@ -80,13 +82,13 @@ namespace SS.CMS.Core.Services
                     }
                 }
 
-                var siteDirList = _siteRepository.GetLowerSiteDirListThatNotIsRoot();
+                var siteDirList = await _siteRepository.GetSiteDirListAsync(0);
 
                 var directoryPaths = DirectoryUtils.GetDirectoryPaths(siteTemplatePath);
                 foreach (var subDirectoryPath in directoryPaths)
                 {
                     var directoryName = PathUtils.GetDirectoryName(subDirectoryPath, false);
-                    if (!_pathManager.IsSystemDirectory(directoryName) && !siteDirList.Contains(directoryName.ToLower()))
+                    if (!StringUtils.ContainsIgnoreCase(siteDirList, directoryName))
                     {
                         var destDirectoryPath = PathUtils.Combine(sitePath, directoryName);
                         DirectoryUtils.MoveDirectory(subDirectoryPath, destDirectoryPath, isOverride);
@@ -101,27 +103,27 @@ namespace SS.CMS.Core.Services
             DirectoryUtils.DeleteDirectoryIfExists(siteTemplateMetadataPath);
         }
 
-        public void ChangeParentSite(ISiteRepository siteRepository, int oldParentSiteId, int newParentSiteId, int siteId, string siteDir)
+        public async Task ChangeParentSiteAsync(int oldParentSiteId, int newParentSiteId, int siteId, string siteDir)
         {
             if (oldParentSiteId == newParentSiteId) return;
 
             string oldPsPath;
             if (oldParentSiteId != 0)
             {
-                var oldSiteInfo = siteRepository.GetSiteInfo(oldParentSiteId);
+                var oldSiteInfo = await _siteRepository.GetSiteAsync(oldParentSiteId);
 
                 oldPsPath = PathUtils.Combine(_pathManager.GetSitePath(oldSiteInfo), siteDir);
             }
             else
             {
-                var siteInfo = siteRepository.GetSiteInfo(siteId);
+                var siteInfo = await _siteRepository.GetSiteAsync(siteId);
                 oldPsPath = _pathManager.GetSitePath(siteInfo);
             }
 
             string newPsPath;
             if (newParentSiteId != 0)
             {
-                var newSiteInfo = siteRepository.GetSiteInfo(newParentSiteId);
+                var newSiteInfo = await _siteRepository.GetSiteAsync(newParentSiteId);
 
                 newPsPath = PathUtils.Combine(_pathManager.GetSitePath(newSiteInfo), siteDir);
             }
@@ -144,18 +146,16 @@ namespace SS.CMS.Core.Services
             }
         }
 
-        public void ChangeToHeadquarters(SiteInfo siteInfo, bool isMoveFiles)
+        public async Task ChangeToRootAsync(Site siteInfo, bool isMoveFiles)
         {
-            if (siteInfo.Root == false)
+            if (siteInfo.IsRoot == false && siteInfo.ParentId == 0)
             {
                 var sitePath = _pathManager.GetSitePath(siteInfo);
 
-                _siteRepository.UpdateParentIdToZero(siteInfo.Id);
-
-                siteInfo.Root = true;
+                siteInfo.IsRoot = true;
                 siteInfo.SiteDir = string.Empty;
 
-                _siteRepository.Update(siteInfo);
+                await _siteRepository.UpdateAsync(siteInfo);
                 if (isMoveFiles)
                 {
                     DirectoryUtils.MoveDirectory(sitePath, _settingsManager.WebRootPath, false);
@@ -164,14 +164,14 @@ namespace SS.CMS.Core.Services
             }
         }
 
-        public void ChangeToSubSite(SiteInfo siteInfo, string psDir, ArrayList fileSystemNameArrayList)
+        public async Task ChangeToSubSiteAsync(Site siteInfo, string psDir, ArrayList fileSystemNameArrayList)
         {
-            if (siteInfo.Root)
+            if (siteInfo.IsRoot)
             {
-                siteInfo.Root = false;
+                siteInfo.IsRoot = false;
                 siteInfo.SiteDir = psDir.Trim();
 
-                _siteRepository.Update(siteInfo);
+                await _siteRepository.UpdateAsync(siteInfo);
 
                 var psPath = PathUtils.Combine(_settingsManager.WebRootPath, psDir);
                 DirectoryUtils.CreateDirectoryIfNotExists(psPath);

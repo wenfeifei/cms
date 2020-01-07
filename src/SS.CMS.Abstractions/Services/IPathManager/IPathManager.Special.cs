@@ -1,10 +1,10 @@
-using SS.CMS.Abstractions.Models;
+using SS.CMS.Models;
 
-namespace SS.CMS.Abstractions.Services
+namespace SS.CMS.Services
 {
     public partial interface IPathManager
     {
-        string GetSpecialDirectoryPath(SiteInfo siteInfo, string url);
+        string GetSpecialDirectoryPath(Site siteInfo, string url);
 
         string GetSpecialZipFilePath(string directoryPath);
 

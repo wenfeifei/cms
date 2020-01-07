@@ -1,13 +1,10 @@
 ﻿using System.Collections.Generic;
 using System.Text;
-using SS.CMS.Abstractions;
-using SS.CMS.Abstractions.Enums;
-using SS.CMS.Abstractions.Models;
-using SS.CMS.Core.Cache;
+using System.Threading.Tasks;
 using SS.CMS.Core.Common;
-using SS.CMS.Core.Models;
 using SS.CMS.Core.StlParser.Models;
-using SS.CMS.Core.StlParser.Utility;
+using SS.CMS.Enums;
+using SS.CMS.Models;
 using SS.CMS.Utils;
 
 namespace SS.CMS.Core.StlParser.StlElement
@@ -72,7 +69,7 @@ namespace SS.CMS.Core.StlParser.StlElement
             {TypeSiteUrl, "站点的域名地址"}
         };
 
-        internal static object Parse(ParseContext parseContext)
+        internal static async Task<object> ParseAsync(ParseContext parseContext)
         {
             var siteName = string.Empty;
             var siteDir = string.Empty;
@@ -97,11 +94,11 @@ namespace SS.CMS.Core.StlParser.StlElement
 
                 if (StringUtils.EqualsIgnoreCase(name, SiteName))
                 {
-                    siteName = parseContext.ReplaceStlEntitiesForAttributeValue(value);
+                    siteName = await parseContext.ReplaceStlEntitiesForAttributeValueAsync(value);
                 }
                 else if (StringUtils.EqualsIgnoreCase(name, SiteDir))
                 {
-                    siteDir = parseContext.ReplaceStlEntitiesForAttributeValue(value);
+                    siteDir = await parseContext.ReplaceStlEntitiesForAttributeValueAsync(value);
                 }
                 else if (StringUtils.EqualsIgnoreCase(name, Type))
                 {
@@ -161,11 +158,11 @@ namespace SS.CMS.Core.StlParser.StlElement
 
             if (!string.IsNullOrEmpty(siteName))
             {
-                siteInfo = parseContext.SiteRepository.GetSiteInfoBySiteName(siteName);
+                siteInfo = await parseContext.SiteRepository.GetSiteBySiteNameAsync(siteName);
             }
             else if (!string.IsNullOrEmpty(siteDir))
             {
-                siteInfo = parseContext.SiteRepository.GetSiteInfoByDirectory(siteDir);
+                siteInfo = await parseContext.SiteRepository.GetSiteBySiteDirAsync(siteDir);
             }
 
             if (parseContext.IsStlEntity && string.IsNullOrEmpty(type))
@@ -173,10 +170,10 @@ namespace SS.CMS.Core.StlParser.StlElement
                 return siteInfo;
             }
 
-            return ParseImpl(parseContext, siteInfo, type, formatString, separator, startIndex, length, wordNum, ellipsis, replace, to, isClearTags, isReturnToBr, isLower, isUpper);
+            return await ParseImplAsync(parseContext, siteInfo, type, formatString, separator, startIndex, length, wordNum, ellipsis, replace, to, isClearTags, isReturnToBr, isLower, isUpper);
         }
 
-        private static string ParseImpl(ParseContext parseContext, SiteInfo siteInfo, string type, string formatString, string separator, int startIndex, int length, int wordNum, string ellipsis, string replace, string to, bool isClearTags, bool isReturnToBr, bool isLower, bool isUpper)
+        private static async Task<string> ParseImplAsync(ParseContext parseContext, Site siteInfo, string type, string formatString, string separator, int startIndex, int length, int wordNum, string ellipsis, string replace, string to, bool isClearTags, bool isReturnToBr, bool isLower, bool isUpper)
         {
             if (siteInfo == null) return string.Empty;
 
@@ -191,7 +188,7 @@ namespace SS.CMS.Core.StlParser.StlElement
                 parseContext.PageInfo.ChangeSite(siteInfo, siteInfo.Id, 0, parseContext);
 
                 var innerBuilder = new StringBuilder(parseContext.InnerHtml);
-                parseContext.ParseInnerContent(innerBuilder);
+                await parseContext.ParseInnerContentAsync(innerBuilder);
                 parsedContent = innerBuilder.ToString();
 
                 parseContext.PageInfo.ChangeSite(preSiteInfo, prePageChannelId, prePageContentId, parseContext);
@@ -214,7 +211,7 @@ namespace SS.CMS.Core.StlParser.StlElement
                 parsedContent = parseContext.SiteInfo.Get<string>(type);
                 if (!string.IsNullOrEmpty(parsedContent))
                 {
-                    var styleInfo = parseContext.TableStyleRepository.GetTableStyleInfo(DataProvider.SiteRepository.TableName, type, parseContext.TableStyleRepository.GetRelatedIdentities(parseContext.SiteId));
+                    var styleInfo = await parseContext.TableStyleRepository.GetTableStyleInfoAsync(parseContext.SiteRepository.TableName, type, parseContext.TableStyleRepository.GetRelatedIdentities(parseContext.SiteId));
 
                     // 如果 styleInfo.TableStyleId <= 0，表示此字段已经被删除了，不需要再显示值了 ekun008
                     if (styleInfo.Id > 0)

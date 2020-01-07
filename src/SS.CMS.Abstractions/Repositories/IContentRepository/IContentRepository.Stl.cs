@@ -1,11 +1,19 @@
 ﻿using System.Collections.Generic;
 using System.Collections.Specialized;
-using SS.CMS.Abstractions.Models;
+using System.Threading.Tasks;
+using SqlKata;
+using SS.CMS.Models;
 
-namespace SS.CMS.Abstractions.Repositories
+namespace SS.CMS.Repositories
 {
     public partial interface IContentRepository
     {
-        List<KeyValuePair<int, ContentInfo>> GetContainerContentListBySqlString(string sqlString, string orderString, int totalCount, int itemsPerPage, int currentPageIndex);
+        Task<List<KeyValuePair<int, Content>>> GetContainerContentListCheckedAsync(List<int> channelIdList, int startNum, int totalNum, string order, Query query, NameValueCollection others);
+
+        Task<List<KeyValuePair<int, Content>>> GetContainerContentListByContentNumAndWhereStringAsync(int totalNum, Query query, string order);
+
+        Task<List<KeyValuePair<int, Content>>> GetContainerContentListByStartNumAsync(int startNum, int totalNum, Query query, string order);
+
+        List<KeyValuePair<int, Content>> GetContainerContentListBySqlString(string sqlString, string orderString, int totalCount, int itemsPerPage, int currentPageIndex);
     }
 }

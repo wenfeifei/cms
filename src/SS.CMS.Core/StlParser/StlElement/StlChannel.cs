@@ -1,14 +1,12 @@
-﻿using System.Text;
-using SS.CMS.Abstractions;
-using SS.CMS.Abstractions.Enums;
-using SS.CMS.Abstractions.Models;
-using SS.CMS.Core.Cache;
-using SS.CMS.Core.Cache.Stl;
+﻿using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 using SS.CMS.Core.Common;
-using SS.CMS.Core.Models;
 using SS.CMS.Core.Models.Attributes;
 using SS.CMS.Core.StlParser.Models;
 using SS.CMS.Core.StlParser.Utility;
+using SS.CMS.Enums;
+using SS.CMS.Models;
 using SS.CMS.Utils;
 
 namespace SS.CMS.Core.StlParser.StlElement
@@ -79,7 +77,7 @@ namespace SS.CMS.Core.StlParser.StlElement
         [StlAttribute(Title = "是否转换为大写")]
         private const string IsUpper = nameof(IsUpper);
 
-        public static object Parse(ParseContext parseContext)
+        public static async Task<object> ParseAsync(ParseContext parseContext)
         {
             var leftText = string.Empty;
             var rightText = string.Empty;
@@ -107,11 +105,11 @@ namespace SS.CMS.Core.StlParser.StlElement
 
                 if (StringUtils.EqualsIgnoreCase(name, ChannelIndex))
                 {
-                    channelIndex = parseContext.ReplaceStlEntitiesForAttributeValue(value);
+                    channelIndex = await parseContext.ReplaceStlEntitiesForAttributeValueAsync(value);
                 }
                 else if (StringUtils.EqualsIgnoreCase(name, ChannelName))
                 {
-                    channelName = parseContext.ReplaceStlEntitiesForAttributeValue(value);
+                    channelName = await parseContext.ReplaceStlEntitiesForAttributeValueAsync(value);
                 }
                 else if (StringUtils.EqualsIgnoreCase(name, Parent))
                 {
@@ -190,20 +188,20 @@ namespace SS.CMS.Core.StlParser.StlElement
                 }
             }
 
-            var channelId = StlDataUtility.GetChannelIdByLevel(parseContext.SiteId, parseContext.ChannelId, upLevel, topLevel);
+            var channelId = await parseContext.GetChannelIdByLevelAsync(parseContext.SiteId, parseContext.ChannelId, upLevel, topLevel);
 
-            channelId = ChannelManager.GetChannelId(parseContext.SiteId, channelId, channelIndex, channelName);
-            var channel = ChannelManager.GetChannelInfo(parseContext.SiteId, channelId);
+            channelId = await parseContext.ChannelRepository.GetIdAsync(parseContext.SiteId, channelId, channelIndex, channelName);
+            var channel = await parseContext.ChannelRepository.GetChannelAsync(channelId);
 
             if (parseContext.IsStlEntity && string.IsNullOrEmpty(type))
             {
                 return channel.ToDictionary();
             }
 
-            var parsedContent = ParseImpl(parseContext, leftText, rightText, type, formatString, separator, startIndex, length, wordNum, ellipsis, replace, to, isClearTags, isReturnToBr, isLower, isUpper, channel, channelId);
+            var parsedContent = await ParseImplAsync(parseContext, leftText, rightText, type, formatString, separator, startIndex, length, wordNum, ellipsis, replace, to, isClearTags, isReturnToBr, isLower, isUpper, channel, channelId);
 
             var innerBuilder = new StringBuilder(parsedContent);
-            parseContext.ParseInnerContent(innerBuilder);
+            await parseContext.ParseInnerContentAsync(innerBuilder);
             parsedContent = innerBuilder.ToString();
 
             if (!StringUtils.EqualsIgnoreCase(type, ChannelAttribute.PageContent))
@@ -214,7 +212,7 @@ namespace SS.CMS.Core.StlParser.StlElement
             return parsedContent;
         }
 
-        private static string ParseImpl(ParseContext parseContext, string leftText, string rightText, string type, string formatString, string separator, int startIndex, int length, int wordNum, string ellipsis, string replace, string to, bool isClearTags, bool isReturnToBr, bool isLower, bool isUpper, ChannelInfo channel, int channelId)
+        private static async Task<string> ParseImplAsync(ParseContext parseContext, string leftText, string rightText, string type, string formatString, string separator, int startIndex, int length, int wordNum, string ellipsis, string replace, string to, bool isClearTags, bool isReturnToBr, bool isLower, bool isUpper, Channel channel, int channelId)
         {
             if (string.IsNullOrEmpty(type))
             {
@@ -262,18 +260,6 @@ namespace SS.CMS.Core.StlParser.StlElement
             {
                 parsedContent = channel.ParentsPath;
             }
-            else if (type.Equals(ChannelAttribute.ParentsCount.ToLower()))
-            {
-                parsedContent = channel.ParentsCount.ToString();
-            }
-            else if (type.Equals(ChannelAttribute.ChildrenCount.ToLower()))
-            {
-                parsedContent = channel.ChildrenCount.ToString();
-            }
-            else if (type.Equals(ChannelAttribute.LastNode.ToLower()))
-            {
-                parsedContent = channel.LastNode.ToString();
-            }
             else if (type.Equals(ChannelAttribute.ChannelIndex.ToLower()) || type.Equals(ChannelAttribute.IndexName.ToLower()))
             {
                 parsedContent = channel.IndexName;
@@ -296,10 +282,10 @@ namespace SS.CMS.Core.StlParser.StlElement
             {
                 parsedContent = channel.Taxis.ToString();
             }
-            else if (type.Equals(ChannelAttribute.AddDate.ToLower()))
+            else if (type.Equals(ChannelAttribute.CreatedDate.ToLower()))
             {
                 inputType = InputType.DateTime;
-                parsedContent = DateUtils.Format(channel.AddDate, formatString);
+                parsedContent = DateUtils.Format(channel.CreatedDate, formatString);
             }
             else if (type.Equals(ChannelAttribute.ImageUrl.ToLower()))
             {
@@ -417,23 +403,26 @@ namespace SS.CMS.Core.StlParser.StlElement
             }
             else if (type.Equals(ChannelAttribute.CountOfChannels.ToLower()))
             {
-                parsedContent = channel.ChildrenCount.ToString();
+                var childrenIds = await parseContext.ChannelRepository.GetChildrenIdsAsync(channel.SiteId, channel.Id);
+                parsedContent = childrenIds.Count().ToString();
             }
             else if (type.Equals(ChannelAttribute.CountOfContents.ToLower()))
             {
-                var count = channel.ContentRepository.GetCount(parseContext.PluginManager, parseContext.SiteInfo, channel, true);
+                var contentRepository = parseContext.ChannelRepository.GetContentRepository(parseContext.SiteInfo, channel);
+                var count = await contentRepository.GetCountAsync(parseContext.SiteInfo, channel, true);
                 parsedContent = count.ToString();
             }
             else if (type.Equals(ChannelAttribute.CountOfImageContents.ToLower()))
             {
-                var count = channel.ContentRepository.StlGetCountCheckedImage(parseContext.SiteId, channel);
+                var contentRepository = parseContext.ChannelRepository.GetContentRepository(parseContext.SiteInfo, channel);
+                var count = await contentRepository.GetCountCheckedImageAsync(parseContext.SiteId, channel.Id);
                 parsedContent = count.ToString();
             }
             else
             {
                 var attributeName = type;
 
-                var styleInfo = parseContext.TableStyleRepository.GetTableStyleInfo(DataProvider.ChannelRepository.TableName, attributeName, parseContext.TableStyleRepository.GetRelatedIdentities(channel));
+                var styleInfo = await parseContext.TableStyleRepository.GetTableStyleInfoAsync(parseContext.ChannelRepository.TableName, attributeName, parseContext.TableStyleRepository.GetRelatedIdentities(channel));
                 if (styleInfo.Id > 0)
                 {
                     parsedContent = channel.Get(attributeName, styleInfo.DefaultValue);

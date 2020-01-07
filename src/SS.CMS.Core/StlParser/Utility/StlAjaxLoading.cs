@@ -1,5 +1,4 @@
-﻿using SS.CMS.Abstractions.Services;
-using SS.CMS.Core.Common;
+﻿using SS.CMS.Services;
 
 namespace SS.CMS.Core.StlParser.Utility
 {

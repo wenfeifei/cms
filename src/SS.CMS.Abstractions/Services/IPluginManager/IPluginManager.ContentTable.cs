@@ -1,13 +1,11 @@
-﻿namespace SS.CMS.Abstractions.Services
+﻿using System.Threading.Tasks;
+
+namespace SS.CMS.Services
 {
     public partial interface IPluginManager
     {
-        bool IsContentTable(IService service);
+        Task SyncContentTableAsync(IService service);
 
-        string GetContentTableName(string pluginId);
-
-        void SyncContentTable(IService service);
-
-        bool IsContentTableUsed(string tableName);
+        Task<bool> IsContentTableUsedAsync(string tableName);
     }
 }

@@ -1,10 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using SS.CMS.Abstractions;
-using SS.CMS.Abstractions.Models;
 using SS.CMS.Data;
-using Menu = SS.CMS.Abstractions.Menu;
+using SS.CMS.Models;
+using Menu = SS.CMS.Menu;
 
 namespace SS.CMS.Core.Plugin
 {
@@ -30,7 +29,7 @@ namespace SS.CMS.Core.Plugin
         public List<Func<Menu>> SystemMenuFuncs { get; private set; }
         public List<Func<int, Menu>> SiteMenuFuncs { get; private set; }
         public List<Func<Menu>> HomeMenuFuncs { get; private set; }
-        public List<Func<ContentInfo, Menu>> ContentMenuFuncs { get; private set; }
+        public List<Func<Content, Menu>> ContentMenuFuncs { get; private set; }
 
         public string ContentTableName { get; private set; }
         public bool IsApiAuthorization { get; private set; }
@@ -130,11 +129,11 @@ namespace SS.CMS.Core.Plugin
             return this;
         }
 
-        public IService AddContentMenu(Func<ContentInfo, Menu> menuFunc)
+        public IService AddContentMenu(Func<Content, Menu> menuFunc)
         {
             if (ContentMenuFuncs == null)
             {
-                ContentMenuFuncs = new List<Func<ContentInfo, Menu>>();
+                ContentMenuFuncs = new List<Func<Content, Menu>>();
             }
 
             ContentMenuFuncs.Add(menuFunc);

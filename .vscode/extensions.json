@@ -1,9 +1,10 @@
 {
 	"recommendations": [
 		"ms-vscode.csharp",
-		"dbaeumer.vscode-eslint",
+		"streetsidesoftware.code-spell-checker",
+		"formulahendry.dotnet-test-explorer",
 		"warren-buckley.iis-express",
-		"esbenp.prettier-vscode",
-		"octref.vetur"
+		"k--kato.docomment",
+		"tabnine.tabnine-vscode"
 	]
 }

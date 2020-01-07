@@ -7,32 +7,6 @@ namespace SS.CMS.Data
 {
     public partial class Repository<T> where T : Entity, new()
     {
-        public virtual bool Update(T dataInfo)
-        {
-            if (dataInfo == null || dataInfo.Id <= 0) return false;
-
-            if (!Utilities.IsGuid(dataInfo.Guid))
-            {
-                dataInfo.Guid = Utilities.GetGuid();
-            }
-            dataInfo.LastModifiedDate = DateTime.Now;
-
-            var query = Q.Where(nameof(Entity.Id), dataInfo.Id);
-
-            foreach (var tableColumn in TableColumns)
-            {
-                if (Utilities.EqualsIgnoreCase(tableColumn.AttributeName, nameof(Entity.Id))) continue;
-
-                var value = tableColumn.IsExtend
-                    ? Utilities.JsonSerialize(dataInfo.ToDictionary(dataInfo.GetColumnNames()))
-                    : dataInfo.Get(tableColumn.AttributeName);
-
-                query.Set(tableColumn.AttributeName, value);
-            }
-
-            return RepositoryUtils.UpdateAll(Db, TableName, query) > 0;
-        }
-
         public virtual async Task<bool> UpdateAsync(T dataInfo)
         {
             if (dataInfo == null || dataInfo.Id <= 0) return false;
@@ -49,73 +23,13 @@ namespace SS.CMS.Data
             {
                 if (Utilities.EqualsIgnoreCase(tableColumn.AttributeName, nameof(Entity.Id))) continue;
 
-                var value = tableColumn.IsExtend
-                    ? Utilities.JsonSerialize(dataInfo.ToDictionary(dataInfo.GetColumnNames()))
-                    : dataInfo.Get(tableColumn.AttributeName);
+                var value = tableColumn.IsExtend ? dataInfo.GetExtendColumnValue() : dataInfo.Get(tableColumn.AttributeName);
 
                 query.Set(tableColumn.AttributeName, value);
             }
 
-            return await RepositoryUtils.UpdateAllAsync(Db, TableName, query) > 0;
+            return await RepositoryUtils.UpdateAllAsync(Database, TableName, query) > 0;
         }
-
-        public virtual bool Update(T dataInfo, params string[] columnNames)
-        {
-            if (dataInfo.Id > 0)
-            {
-                var query = Q.Where(nameof(Entity.Id), dataInfo.Id);
-
-                foreach (var columnName in columnNames)
-                {
-                    if (Utilities.EqualsIgnoreCase(columnName, nameof(Entity.Id))) continue;
-                    query.Set(columnName, ReflectionUtils.GetValue(dataInfo, columnName));
-                }
-
-                //var values = RepositoryUtils.ObjToDict(dataInfo, columnNames, nameof(IEntity.Id));
-                //foreach (var value in values)
-                //{
-                //    query.Set(value.Key, value.Value);
-                //}
-                return RepositoryUtils.UpdateAll(Db, TableName, query) > 0;
-            }
-            if (Utilities.IsGuid(dataInfo.Guid))
-            {
-                var query = Q.Where(nameof(Entity.Guid), dataInfo.Guid);
-
-                foreach (var columnName in columnNames)
-                {
-                    if (Utilities.EqualsIgnoreCase(columnName, nameof(Entity.Id)) ||
-                        Utilities.EqualsIgnoreCase(columnName, nameof(Entity.Guid))) continue;
-                    query.Set(columnName, ReflectionUtils.GetValue(dataInfo, columnName));
-                }
-
-                //var values = RepositoryUtils.ObjToDict(dataInfo, columnNames, nameof(IEntity.Id), nameof(IEntity.Guid));
-                //foreach (var value in values)
-                //{
-                //    query.Set(value.Key, value.Value);
-                //}
-
-                return RepositoryUtils.UpdateAll(Db, TableName, query) > 0;
-            }
-
-            return false;
-        }
-
-        public virtual int Update(Query query)
-        {
-            return RepositoryUtils.UpdateAll(Db, TableName, query);
-        }
-
-        public virtual int Increment(string columnName, Query query, int num = 1)
-        {
-            return RepositoryUtils.IncrementAll(Db, TableName, columnName, query, num);
-        }
-
-        public virtual int Decrement(string columnName, Query query, int num = 1)
-        {
-            return RepositoryUtils.DecrementAll(Db, TableName, columnName, query, num);
-        }
-
 
         public virtual async Task<bool> UpdateAsync(T dataInfo, params string[] columnNames)
         {
@@ -134,7 +48,7 @@ namespace SS.CMS.Data
                 //{
                 //    query.Set(value.Key, value.Value);
                 //}
-                return await RepositoryUtils.UpdateAllAsync(Db, TableName, query) > 0;
+                return await RepositoryUtils.UpdateAllAsync(Database, TableName, query) > 0;
             }
             if (Utilities.IsGuid(dataInfo.Guid))
             {
@@ -153,7 +67,7 @@ namespace SS.CMS.Data
                 //    query.Set(value.Key, value.Value);
                 //}
 
-                return await RepositoryUtils.UpdateAllAsync(Db, TableName, query) > 0;
+                return await RepositoryUtils.UpdateAllAsync(Database, TableName, query) > 0;
             }
 
             return false;
@@ -161,17 +75,17 @@ namespace SS.CMS.Data
 
         public virtual async Task<int> UpdateAsync(Query query)
         {
-            return await RepositoryUtils.UpdateAllAsync(Db, TableName, query);
+            return await RepositoryUtils.UpdateAllAsync(Database, TableName, query);
         }
 
         public virtual async Task<int> IncrementAsync(string columnName, Query query, int num = 1)
         {
-            return await RepositoryUtils.IncrementAllAsync(Db, TableName, columnName, query, num);
+            return await RepositoryUtils.IncrementAllAsync(Database, TableName, columnName, query, num);
         }
 
         public virtual async Task<int> DecrementAsync(string columnName, Query query, int num = 1)
         {
-            return await RepositoryUtils.DecrementAllAsync(Db, TableName, columnName, query, num);
+            return await RepositoryUtils.DecrementAllAsync(Database, TableName, columnName, query, num);
         }
     }
 }

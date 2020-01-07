@@ -1,11 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using SS.CMS.Abstractions.Enums;
-using SS.CMS.Abstractions.Models;
 using SS.CMS.Data;
+using SS.CMS.Models;
 
-namespace SS.CMS.Abstractions
+namespace SS.CMS
 {
     /// <summary>
     /// 插件服务注册接口。
@@ -179,7 +178,7 @@ namespace SS.CMS.Abstractions
         /// </summary>
         /// <param name="menuFunc">插件菜单生成方法，可以根据内容上下文计算并返回菜单。</param>
         /// <returns>返回插件服务注册实例。</returns>
-        IService AddContentMenu(Func<ContentInfo, Menu> menuFunc);
+        IService AddContentMenu(Func<Content, Menu> menuFunc);
 
         /// <summary>
         /// 添加插件的内容模型，包含内容存储的表名称以及内容表的字段列表。
@@ -246,7 +245,7 @@ namespace SS.CMS.Abstractions
         List<Func<Menu>> SystemMenuFuncs { get; }
         List<Func<int, Menu>> SiteMenuFuncs { get; }
         List<Func<Menu>> HomeMenuFuncs { get; }
-        List<Func<ContentInfo, Menu>> ContentMenuFuncs { get; }
+        List<Func<Content, Menu>> ContentMenuFuncs { get; }
 
         string ContentTableName { get; }
         bool IsApiAuthorization { get; }

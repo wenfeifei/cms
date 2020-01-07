@@ -1,6 +1,7 @@
-using SS.CMS.Abstractions.Models;
+using System.Threading.Tasks;
+using SS.CMS.Models;
 
-namespace SS.CMS.Abstractions.Services
+namespace SS.CMS.Services
 {
     public partial interface IUrlManager
     {
@@ -8,51 +9,43 @@ namespace SS.CMS.Abstractions.Services
 
         string GetApiUrl(string route);
 
-        string GetAdminUrl(string relatedUrl);
+        Task<string> GetSystemDefaultPageUrlAsync(int siteId);
 
-        string GetHomeUrl(string relatedUrl);
-
-        string GetSystemDefaultPageUrl(int siteId);
-
-        string GetHomeDefaultPageUrl();
+        Task<string> GetHomeDefaultPageUrlAsync();
 
         string GetMenuUrl(string pluginId, string href, int siteId, int channelId, int contentId);
 
-        string ApiUrl { get; }
+        string GetWebUrl(Site siteInfo, params string[] value);
 
-        string InnerApiUrl { get; }
+        string GetAssetsUrl(Site siteInfo, params string[] value);
 
-        string GetInnerApiUrl(string route);
+        string GetHomeUrl(Site siteInfo, params string[] value);
 
-        string GetWebUrl(SiteInfo siteInfo);
+        string GetSiteUrl(Site siteInfo, bool isLocal);
 
-        string GetAssetsUrl(SiteInfo siteInfo);
+        string GetSiteUrl(Site siteInfo, string requestPath, bool isLocal);
 
-        string GetSiteUrl(SiteInfo siteInfo, bool isLocal);
+        string GetSiteUrlByPhysicalPath(Site siteInfo, string physicalPath, bool isLocal);
 
-        string GetSiteUrl(SiteInfo siteInfo, string requestPath, bool isLocal);
+        Task<string> GetIndexPageUrlAsync(Site siteInfo, bool isLocal);
 
-        string GetSiteUrlByPhysicalPath(SiteInfo siteInfo, string physicalPath, bool isLocal);
+        Task<string> GetFileUrlAsync(Site siteInfo, int fileTemplateId, bool isLocal);
 
-        string GetIndexPageUrl(SiteInfo siteInfo, bool isLocal);
+        Task<string> GetContentUrlAsync(Site siteInfo, Content contentInfo, bool isLocal);
 
-        string GetFileUrl(SiteInfo siteInfo, int fileTemplateId, bool isLocal);
-
-        string GetContentUrl(SiteInfo siteInfo, ContentInfo contentInfo, bool isLocal);
-
-        string GetContentUrl(SiteInfo siteInfo, ChannelInfo channelInfo, int contentId, bool isLocal);
+        Task<string> GetContentUrlAsync(Site siteInfo, Channel channelInfo, int contentId, bool isLocal);
 
         //得到栏目经过计算后的连接地址
-        string GetChannelUrl(SiteInfo siteInfo, ChannelInfo channelInfo, bool isLocal);
+        Task<string> GetChannelUrlAsync(Site siteInfo, Channel channelInfo, bool isLocal);
 
-        string GetInputChannelUrl(SiteInfo siteInfo, ChannelInfo nodeInfo, bool isLocal);
+        Task<string> GetInputChannelUrlAsync(Site siteInfo, Channel nodeInfo, bool isLocal);
 
         string AddVirtualToUrl(string url);
 
         //根据发布系统属性判断是否为相对路径并返回解析后路径
-        string ParseNavigationUrl(SiteInfo siteInfo, string url, bool isLocal);
+        string ParseNavigationUrl(Site siteInfo, string url, bool isLocal);
 
-        string GetVirtualUrl(SiteInfo siteInfo, string url);
+        string GetVirtualUrl(Site siteInfo, string url);
 
         bool IsVirtualUrl(string url);
 
@@ -64,6 +57,6 @@ namespace SS.CMS.Abstractions.Services
 
         string GetUserUploadUrl(int userId, string relatedUrl);
 
-        string GetUserAvatarUrl(UserInfo userInfo);
+        string GetUserAvatarUrl(User userInfo);
     }
 }

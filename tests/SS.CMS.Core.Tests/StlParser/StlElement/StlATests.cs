@@ -1,42 +1,44 @@
-using System;
 using System.Collections.Generic;
 using System.Text;
-using SS.CMS.Abstractions.Models;
-using SS.CMS.Core.Models;
+using System.Threading.Tasks;
 using SS.CMS.Core.StlParser;
 using SS.CMS.Core.StlParser.Models;
-using SS.CMS.Core.StlParser.Utility;
+using SS.CMS.Models;
+using SS.CMS.Utils.Tests;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace SS.CMS.Core.Tests.StlParser.StlElement
 {
-    [TestCaseOrderer("SS.CMS.Core.Tests.PriorityOrderer", "SS.CMS.Core.Tests")]
+    [Collection("Database collection")]
     public class StlATests
     {
-        private readonly EnvironmentFixture _fixture;
+        private readonly IntegrationTestsFixture _fixture;
+        private readonly ITestOutputHelper _output;
 
-        public StlATests(EnvironmentFixture fixture)
+        public StlATests(IntegrationTestsFixture fixture, ITestOutputHelper output)
         {
             _fixture = fixture;
+            _output = output;
         }
 
-        [Fact, TestPriority(0)]
-        public void ParseTest()
+        [Fact]
+        public async Task ParseTest()
         {
-            var siteInfo = new SiteInfo();
-            var templateInfo = new TemplateInfo();
+            var siteInfo = new Site();
+            var templateInfo = new Template();
             var pluginItems = new Dictionary<string, object>();
-            var pageInfo = new PageInfo(_fixture.UrlManager.ApiUrl, 0, 0, siteInfo, templateInfo, pluginItems);
+            var pageInfo = new PageInfo(0, 0, siteInfo, templateInfo, pluginItems);
 
-            var contextInfo = new ParseContext(pageInfo, _fixture.Configuration, _fixture.SettingsManager, _fixture.PluginManager, _fixture.PathManager, _fixture.UrlManager, _fixture.FileManager, _fixture.SiteRepository, _fixture.UserRepository, _fixture.TableStyleRepository, _fixture.TemplateRepository);
+            var contextInfo = new ParseContext(pageInfo, _fixture.Configuration, _fixture.Cache, _fixture.SettingsManager, _fixture.PluginManager, _fixture.PathManager, _fixture.UrlManager, _fixture.FileManager, _fixture.SiteRepository, _fixture.ChannelRepository, _fixture.UserRepository, _fixture.TableStyleRepository, _fixture.TemplateRepository, _fixture.TagRepository, _fixture.ErrorLogRepository);
 
             var template = $@"<stl:a href=""https://www.siteserver.cn"">test</stl:a>";
             var builder = new StringBuilder(template);
 
-            contextInfo.ParseTemplateContent(builder);
+            await contextInfo.ParseTemplateContentAsync(builder);
             var parsedContent = builder.ToString();
 
-            Console.Write(parsedContent);
+            _output.WriteLine(parsedContent);
 
             Assert.True(true);
         }

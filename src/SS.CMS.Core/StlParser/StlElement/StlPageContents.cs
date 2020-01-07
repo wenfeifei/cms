@@ -1,15 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using SS.CMS.Abstractions.Enums;
-using SS.CMS.Abstractions.Models;
+using System.Threading.Tasks;
 using SS.CMS.Core.Api.Sys.Stl;
-using SS.CMS.Core.Cache.Stl;
-using SS.CMS.Core.Common;
-using SS.CMS.Core.Models;
 using SS.CMS.Core.StlParser.Models;
 using SS.CMS.Core.StlParser.Utility;
-using SS.CMS.Utils.Enumerations;
+using SS.CMS.Enums;
+using SS.CMS.Models;
 
 namespace SS.CMS.Core.StlParser.StlElement
 {
@@ -24,13 +21,13 @@ namespace SS.CMS.Core.StlParser.StlElement
         [StlAttribute(Title = "翻页中生成的静态页面最大数，剩余页面将动态获取")]
         public const string MaxPage = nameof(MaxPage);
 
-        private readonly string _stlPageContentsElement;
+        private string _stlPageContentsElement;
 
-        private readonly List<ContentInfo> _contentInfoList;
-        private readonly ParseContext _parseContext;
-        private readonly ListInfo _listInfo;
+        private IEnumerable<Content> _contentInfoList;
+        private ParseContext _parseContext;
+        private ListInfo _listInfo;
 
-        public StlPageContents(string stlPageContentsElement, ParseContext parseContext)
+        public async Task LoadAsync(string stlPageContentsElement, ParseContext parseContext)
         {
             _stlPageContentsElement = stlPageContentsElement;
             _parseContext = parseContext;
@@ -40,17 +37,17 @@ namespace SS.CMS.Core.StlParser.StlElement
             _parseContext = parseContext.Clone(stlPageContentsElement, stlElementInfo.InnerHtml, stlElementInfo.Attributes);
 
             parseContext.ContextType = EContextType.Content;
-            _listInfo = ListInfo.GetListInfo(_parseContext);
+            _listInfo = await ListInfo.GetListInfoAsync(_parseContext);
 
-            var channelId = StlDataUtility.GetChannelIdByLevel(parseContext.SiteId, _parseContext.ChannelId, _listInfo.UpLevel, _listInfo.TopLevel);
+            var channelId = await parseContext.GetChannelIdByLevelAsync(parseContext.SiteId, _parseContext.ChannelId, _listInfo.UpLevel, _listInfo.TopLevel);
 
-            channelId = StlDataUtility.GetChannelIdByChannelIdOrChannelIndexOrChannelName(parseContext.SiteId, channelId, _listInfo.ChannelIndex, _listInfo.ChannelName);
+            channelId = await parseContext.GetChannelIdByChannelIdOrChannelIndexOrChannelNameAsync(parseContext.SiteId, channelId, _listInfo.ChannelIndex, _listInfo.ChannelName);
 
-            _contentInfoList = StlDataUtility.GetStlPageContentsSqlString(_parseContext.PluginManager, parseContext.SiteInfo, channelId, _listInfo);
+            _contentInfoList = await parseContext.GetStlPageContentsSqlStringAsync(parseContext.SiteInfo, channelId, _listInfo);
         }
 
         //API StlActionsSearchController调用
-        public StlPageContents(string stlPageContentsElement, ParseContext parseContext, int pageNum, ChannelInfo channelInfo)
+        public async Task LoadAsync(string stlPageContentsElement, ParseContext parseContext, int pageNum, Channel channelInfo)
         {
             _parseContext = parseContext;
 
@@ -58,7 +55,7 @@ namespace SS.CMS.Core.StlParser.StlElement
             _parseContext = parseContext.Clone(stlPageContentsElement, stlElementInfo.InnerHtml, stlElementInfo.Attributes);
 
             _parseContext.ContextType = EContextType.Content;
-            _listInfo = ListInfo.GetListInfo(_parseContext);
+            _listInfo = await ListInfo.GetListInfoAsync(_parseContext);
 
             _listInfo.Scope = ScopeType.All;
 
@@ -67,12 +64,12 @@ namespace SS.CMS.Core.StlParser.StlElement
                 _listInfo.PageNum = pageNum;
             }
 
-            _contentInfoList = StlDataUtility.GetPageContentsSqlStringBySearch(channelInfo, _listInfo.GroupContent, _listInfo.GroupContentNot, _listInfo.Tags, _listInfo.IsImage, _listInfo.IsVideo, _listInfo.IsFile, _listInfo.StartNum, _listInfo.TotalNum, _listInfo.Order, _listInfo.IsTop, _listInfo.IsRecommend, _listInfo.IsHot, _listInfo.IsColor);
+            _contentInfoList = await parseContext.GetPageContentsSqlStringBySearchAsync(channelInfo, _listInfo.GroupContent, _listInfo.GroupContentNot, _listInfo.Tags, _listInfo.IsImage, _listInfo.IsVideo, _listInfo.IsFile, _listInfo.StartNum, _listInfo.TotalNum, _listInfo.Order, _listInfo.IsTop, _listInfo.IsRecommend, _listInfo.IsHot, _listInfo.IsColor);
         }
 
-        public int GetPageCount(out int totalNum)
+        public async Task<(int PageCount, int TotalNum)> GetPageCountAsync()
         {
-            totalNum = 0;
+            var totalNum = 0;
             var pageCount = 1;
             try
             {
@@ -85,12 +82,12 @@ namespace SS.CMS.Core.StlParser.StlElement
             }
             catch (Exception ex)
             {
-                LogUtils.AddStlErrorLog(_parseContext.PageInfo, ElementName, _stlPageContentsElement, ex);
+                await _parseContext.GetErrorMessageAsync(ElementName, _stlPageContentsElement, ex);
             }
-            return pageCount;
+            return (pageCount, totalNum);
         }
 
-        public string Parse(int totalNum, int currentPageIndex, int pageCount, bool isStatic)
+        public async Task<string> ParseAsync(int totalNum, int currentPageIndex, int pageCount, bool isStatic)
         {
             if (isStatic)
             {
@@ -119,7 +116,7 @@ namespace SS.CMS.Core.StlParser.StlElement
             }
             catch (Exception ex)
             {
-                parsedContent = LogUtils.AddStlErrorLog(_parseContext.PageInfo, ElementName, _stlPageContentsElement, ex);
+                parsedContent = await _parseContext.GetErrorMessageAsync(ElementName, _stlPageContentsElement, ex);
             }
 
             //还原翻页为0，使得其他列表能够正确解析ItemIndex
@@ -145,7 +142,7 @@ namespace SS.CMS.Core.StlParser.StlElement
             _parseContext.PageInfo.AddPageBodyCodeIfNotExists(_parseContext.UrlManager, PageInfo.Const.Jquery);
 
             var ajaxDivId = StlParserUtility.GetAjaxDivId(_parseContext.UniqueId);
-            var apiUrl = ApiRouteActionsPageContents.GetUrl(_parseContext.ApiUrl);
+            var apiUrl = ApiRouteActionsPageContents.GetUrl();
             var apiParameters = ApiRouteActionsPageContents.GetParameters(_parseContext.SettingsManager, _parseContext.SiteId, _parseContext.PageChannelId, _parseContext.TemplateInfo.Id, totalNum, pageCount, currentPageIndex, _stlPageContentsElement);
 
             var builder = new StringBuilder();

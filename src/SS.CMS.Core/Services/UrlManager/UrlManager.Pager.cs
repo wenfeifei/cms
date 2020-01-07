@@ -1,16 +1,12 @@
-﻿using SS.CMS.Abstractions.Models;
-using SS.CMS.Abstractions.Repositories;
-using SS.CMS.Abstractions.Services;
-using SS.CMS.Core.Cache;
-using SS.CMS.Core.Common;
-using SS.CMS.Core.Models;
+﻿using System.Threading.Tasks;
 using SS.CMS.Core.StlParser.StlElement;
+using SS.CMS.Models;
 
 namespace SS.CMS.Core.Services
 {
     public partial class UrlManager
     {
-        public string GetPagerUrlInChannelPage(string type, SiteInfo siteInfo, ChannelInfo nodeInfo, int index, int currentPageIndex, int pageCount, bool isLocal)
+        public async Task<string> GetPagerUrlInChannelPageAsync(string type, Site siteInfo, Channel nodeInfo, int index, int currentPageIndex, int pageCount, bool isLocal)
         {
             var pageIndex = 0;
             if (type.ToLower().Equals(StlPageItem.TypeFirstPage.ToLower()))//首页
@@ -34,11 +30,11 @@ namespace SS.CMS.Core.Services
                 pageIndex = index - 1;
             }
 
-            var physicalPath = _pathManager.GetChannelPageFilePath(siteInfo, nodeInfo.Id, pageIndex);
+            var physicalPath = await _pathManager.GetChannelPageFilePathAsync(siteInfo, nodeInfo.Id, pageIndex);
             return GetSiteUrlByPhysicalPath(siteInfo, physicalPath, isLocal);
         }
 
-        public string GetPagerUrlInContentPage(string type, SiteInfo siteInfo, int channelId, int contentId, int index, int currentPageIndex, int pageCount, bool isLocal)
+        public async Task<string> GetPagerUrlInContentPageAsync(string type, Site siteInfo, int channelId, int contentId, int index, int currentPageIndex, int pageCount, bool isLocal)
         {
             var pageIndex = 0;
             if (type.ToLower().Equals(StlPageItem.TypeFirstPage.ToLower()))//首页
@@ -62,7 +58,7 @@ namespace SS.CMS.Core.Services
                 pageIndex = index - 1;
             }
 
-            var physicalPath = _pathManager.GetContentPageFilePath(siteInfo, channelId, contentId, pageIndex);
+            var physicalPath = await _pathManager.GetContentPageFilePathAsync(siteInfo, channelId, contentId, pageIndex);
             return GetSiteUrlByPhysicalPath(siteInfo, physicalPath, isLocal);
         }
 
@@ -98,7 +94,7 @@ namespace SS.CMS.Core.Services
             return clickString;
         }
 
-        public string GetPagerJsMethodInDynamicPage(string type, SiteInfo siteInfo, int channelId, int contentId, int index, int currentPageIndex, int pageCount, bool isPageRefresh, string ajaxDivId, bool isLocal)
+        public async Task<string> GetPagerJsMethodInDynamicPageAsync(string type, Site siteInfo, int channelId, int contentId, int index, int currentPageIndex, int pageCount, bool isPageRefresh, string ajaxDivId, bool isLocal)
         {
             var jsMethod = string.Empty;
             var pageIndex = 0;
@@ -181,8 +177,8 @@ namespace SS.CMS.Core.Services
                 }
                 else
                 {
-                    var nodeInfo = ChannelManager.GetChannelInfo(siteInfo.Id, channelId);
-                    var redirectUrl = contentId > 0 ? _pathManager.GetContentPageFilePath(siteInfo, nodeInfo.Id, contentId, pageIndex) : _pathManager.GetChannelPageFilePath(siteInfo, nodeInfo.Id, pageIndex);
+                    var nodeInfo = await _channelRepository.GetChannelAsync(channelId);
+                    var redirectUrl = contentId > 0 ? await _pathManager.GetContentPageFilePathAsync(siteInfo, nodeInfo.Id, contentId, pageIndex) : await _pathManager.GetChannelPageFilePathAsync(siteInfo, nodeInfo.Id, pageIndex);
                     redirectUrl = GetSiteUrlByPhysicalPath(siteInfo, redirectUrl, isLocal);
                     jsMethod = $"window.location.href='{redirectUrl}';";
                 }

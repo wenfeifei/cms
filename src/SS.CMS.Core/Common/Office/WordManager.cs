@@ -8,9 +8,9 @@ using System.Xml.Linq;
 using DocumentFormat.OpenXml.Packaging;
 using HtmlAgilityPack;
 using OpenXmlPowerTools;
-using SS.CMS.Abstractions.Enums;
-using SS.CMS.Abstractions.Models;
-using SS.CMS.Abstractions.Services;
+using SS.CMS.Enums;
+using SS.CMS.Models;
+using SS.CMS.Services;
 using SS.CMS.Utils;
 using FileUtils = SS.CMS.Utils.FileUtils;
 
@@ -33,7 +33,7 @@ namespace SS.CMS.Core.Common.Office
             public string ImageDirectoryUrl { get; set; }
         }
 
-        public static (string title, string content) GetWord(IPathManager pathManager, IUrlManager urlManager, IFileManager fileManager, SiteInfo siteInfo, bool isFirstLineTitle, bool isFirstLineRemove, bool isClearFormat, bool isFirstLineIndent, bool isClearFontSize, bool isClearFontFamily, bool isClearImages, string fileName)
+        public static (string title, string content) GetWord(IPathManager pathManager, IUrlManager urlManager, IFileManager fileManager, Site siteInfo, bool isFirstLineTitle, bool isFirstLineRemove, bool isClearFormat, bool isFirstLineIndent, bool isClearFontSize, bool isClearFontFamily, bool isClearImages, string fileName)
         {
             var docsFilePath = pathManager.GetTemporaryFilesPath(fileName);
             var imageDirectoryPath = pathManager.GetUploadDirectoryPath(siteInfo, UploadType.Image);

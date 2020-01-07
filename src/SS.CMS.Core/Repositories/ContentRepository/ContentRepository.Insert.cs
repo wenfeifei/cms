@@ -1,49 +1,49 @@
 ﻿using System;
-using SS.CMS.Abstractions.Models;
+using System.Threading.Tasks;
 using SS.CMS.Core.Common;
+using SS.CMS.Models;
 
 namespace SS.CMS.Core.Repositories
 {
     public partial class ContentRepository
     {
-        public int Insert(SiteInfo siteInfo, ChannelInfo channelInfo, ContentInfo contentInfo)
+        public async Task<int> InsertAsync(Site siteInfo, Channel channelInfo, Content contentInfo)
         {
             var taxis = 0;
             if (contentInfo.SourceId == SourceManager.Preview)
             {
                 channelInfo.IsPreviewContentsExists = true;
-                DataProvider.ChannelRepository.UpdateExtend(channelInfo);
+                await _channelRepository.UpdateExtendAsync(channelInfo);
             }
             else
             {
-                taxis = GetTaxisToInsert(contentInfo.ChannelId, contentInfo.Top);
+                taxis = await GetTaxisToInsertAsync(contentInfo.ChannelId, contentInfo.IsTop);
             }
-            return InsertWithTaxis(siteInfo, channelInfo, contentInfo, taxis);
+            return await InsertWithTaxisAsync(siteInfo, channelInfo, contentInfo, taxis);
         }
 
-        public int InsertPreview(SiteInfo siteInfo, ChannelInfo channelInfo, ContentInfo contentInfo)
+        public async Task<int> InsertPreviewAsync(Site siteInfo, Channel channelInfo, Content contentInfo)
         {
             channelInfo.IsPreviewContentsExists = true;
-            DataProvider.ChannelRepository.UpdateExtend(channelInfo);
+            await _channelRepository.UpdateExtendAsync(channelInfo);
 
             contentInfo.SourceId = SourceManager.Preview;
-            return InsertWithTaxis(siteInfo, channelInfo, contentInfo, 0);
+            return await InsertWithTaxisAsync(siteInfo, channelInfo, contentInfo, 0);
         }
 
-        public int InsertWithTaxis(SiteInfo siteInfo, ChannelInfo channelInfo, ContentInfo contentInfo, int taxis)
+        public async Task<int> InsertWithTaxisAsync(Site siteInfo, Channel channelInfo, Content contentInfo, int taxis)
         {
-            if (siteInfo.IsAutoPageInTextEditor && !string.IsNullOrEmpty(contentInfo.Content))
+            if (siteInfo.IsAutoPageInTextEditor && !string.IsNullOrEmpty(contentInfo.Body))
             {
-                contentInfo.Content = ContentUtility.GetAutoPageContent(contentInfo.Content, siteInfo.AutoPageWordNum);
+                contentInfo.Body = ContentUtility.GetAutoPageContent(contentInfo.Body, siteInfo.AutoPageWordNum);
             }
             contentInfo.Taxis = taxis;
-            contentInfo.LastEditDate = DateTime.Now;
             contentInfo.SiteId = siteInfo.Id;
             contentInfo.ChannelId = channelInfo.Id;
 
-            contentInfo.Id = _repository.Insert(contentInfo);
+            contentInfo.Id = await _repository.InsertAsync(contentInfo);
 
-            InsertCache(siteInfo, channelInfo, contentInfo);
+            await InsertCacheAsync(siteInfo, channelInfo, contentInfo);
 
             return contentInfo.Id;
         }

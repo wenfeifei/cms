@@ -1,13 +1,14 @@
-using SS.CMS.Abstractions.Models;
+using System.Threading.Tasks;
+using SS.CMS.Models;
 
-namespace SS.CMS.Abstractions.Services
+namespace SS.CMS.Services
 {
     public partial interface IUrlManager
     {
-        string GetSpecialUrl(SiteInfo siteInfo, string url);
+        string GetSpecialUrl(Site siteInfo, string url);
 
-        string GetSpecialUrl(SiteInfo siteInfo, int specialId);
+        Task<string> GetSpecialUrlAsync(Site siteInfo, int specialId);
 
-        string GetSpecialUrl(SiteInfo siteInfo, int specialId, bool isLocal);
+        Task<string> GetSpecialUrlAsync(Site siteInfo, int specialId, bool isLocal);
     }
 }

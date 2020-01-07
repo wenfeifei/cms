@@ -1,38 +1,39 @@
 using System.Collections.Specialized;
-using SS.CMS.Abstractions.Models;
+using System.Threading.Tasks;
+using SS.CMS.Models;
 using SS.CMS.Utils;
 
 namespace SS.CMS.Core.Services
 {
     public partial class UrlManager
     {
-        public string GetSiteUrl(int siteId)
+        public async Task<string> GetSiteUrlAsync(int siteId)
         {
-            var siteInfo = _siteRepository.GetSiteInfo(siteId);
+            var siteInfo = await _siteRepository.GetSiteAsync(siteId);
             return GetSiteUrl(siteInfo, false);
         }
 
-        public string GetSiteUrl(int siteId, string virtualPath)
+        public async Task<string> GetSiteUrlAsync(int siteId, string virtualPath)
         {
-            var siteInfo = _siteRepository.GetSiteInfo(siteId);
+            var siteInfo = await _siteRepository.GetSiteAsync(siteId);
             return ParseNavigationUrl(siteInfo, virtualPath, false);
         }
 
-        public string GetSiteUrlByFilePath(string filePath)
+        public async Task<string> GetSiteUrlByFilePathAsync(string filePath)
         {
-            var siteId = _pathManager.GetSiteIdByFilePath(filePath);
-            var siteInfo = _siteRepository.GetSiteInfo(siteId);
+            var siteId = await _pathManager.GetSiteIdByFilePathAsync(filePath);
+            var siteInfo = await _siteRepository.GetSiteAsync(siteId);
             return GetSiteUrlByPhysicalPath(siteInfo, filePath, false);
         }
 
-        public void PutImagePaths(SiteInfo siteInfo, ContentInfo contentInfo, NameValueCollection collection)
+        public void PutImagePaths(Site siteInfo, Content contentInfo, NameValueCollection collection)
         {
             if (contentInfo == null) return;
 
             var imageUrl = contentInfo.ImageUrl;
             var videoUrl = contentInfo.VideoUrl;
             var fileUrl = contentInfo.FileUrl;
-            var content = contentInfo.Content;
+            var content = contentInfo.Body;
 
             if (!string.IsNullOrEmpty(imageUrl) && IsVirtualUrl(imageUrl))
             {

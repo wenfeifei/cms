@@ -16,6 +16,11 @@ namespace SS.CMS.Utils
             return values.Aggregate(key, (current, t) => current + ("." + t));
         }
 
+        public static string GetContentTableName(int siteId)
+        {
+            return $"siteserver_Content_{siteId}";
+        }
+
         public static bool Equals(string s1, string s2)
         {
             return s1 == s2 || string.IsNullOrEmpty(s1) && string.IsNullOrEmpty(s2);
@@ -139,7 +144,7 @@ namespace SS.CMS.Utils
             return text.ToLower().IndexOf(inner.ToLower(), StringComparison.Ordinal) >= 0;
         }
 
-        public static bool ContainsIgnoreCase(List<string> list, string target)
+        public static bool ContainsIgnoreCase(IList<string> list, string target)
         {
             if (list == null || list.Count == 0) return false;
 

@@ -1,17 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using SS.CMS.Abstractions;
 
 namespace SS.CMS.Core.Services
 {
     public partial class PluginManager
     {
-        public Dictionary<string, Func<IJobContext, Task>> GetJobs()
+        public async Task<Dictionary<string, Func<IJobContext, Task>>> GetJobsAsync()
         {
             var jobs = new Dictionary<string, Func<IJobContext, Task>>(StringComparer.CurrentCultureIgnoreCase);
 
-            foreach (var service in Services)
+            foreach (var service in await GetServicesAsync())
             {
                 if (service.Jobs != null && service.Jobs.Count > 0)
                 {

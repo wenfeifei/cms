@@ -1,40 +1,16 @@
 ﻿using System.Collections.Generic;
-using SS.CMS.Abstractions;
-using SS.CMS.Abstractions.Enums;
-using SS.CMS.Abstractions.Models;
-using SS.CMS.Core.Cache;
-using SS.CMS.Core.Common;
-using SS.CMS.Core.Models;
+using System.Threading.Tasks;
 using SS.CMS.Core.Models.Attributes;
-using SS.CMS.Core.Plugin;
-using SS.CMS.Core.Repositories;
 using SS.CMS.Data;
+using SS.CMS.Enums;
+using SS.CMS.Models;
 using SS.CMS.Utils;
 
 namespace SS.CMS.Core.Services
 {
     public partial class PluginManager
     {
-        public bool IsContentTable(IService service)
-        {
-            return !string.IsNullOrEmpty(service.ContentTableName) &&
-                                     service.ContentTableColumns != null && service.ContentTableColumns.Count > 0;
-        }
-
-        public string GetContentTableName(string pluginId)
-        {
-            foreach (var service in Services)
-            {
-                if (service.PluginId == pluginId && IsContentTable(service))
-                {
-                    return service.ContentTableName;
-                }
-            }
-
-            return string.Empty;
-        }
-
-        public void SyncContentTable(IService service)
+        public async Task SyncContentTableAsync(IService service)
         {
             if (!IsContentTable(service)) return;
 
@@ -42,34 +18,51 @@ namespace SS.CMS.Core.Services
 
             var tableColumns = new List<TableColumn>();
 
-            var db = new Db(_settingsManager.DatabaseType, _settingsManager.DatabaseConnectionString);
-            var defaultContentTableColumns = db.GetTableColumns<ContentInfo>();
+            var db = new Database(_settingsManager.DatabaseType, _settingsManager.DatabaseConnectionString);
+            var defaultContentTableColumns = db.GetTableColumns<Content>();
 
             tableColumns.AddRange(defaultContentTableColumns);
             tableColumns.AddRange(service.ContentTableColumns);
 
-            var tableManager = new TableManager(_settingsManager);
-
-            if (!db.IsTableExists(tableName))
+            if (!await db.IsTableExistsAsync(tableName))
             {
-                tableManager.CreateContentTable(tableName, tableColumns);
+                await _databaseRepository.CreateContentTableAsync(tableName, tableColumns);
             }
             else
             {
-                tableManager.AlterSystemTable(tableName, tableColumns, ContentAttribute.DropAttributes.Value);
+                await _databaseRepository.AlterSystemTableAsync(tableName, tableColumns, ContentAttribute.DropAttributes.Value);
             }
 
-            ContentTableCreateOrUpdateStyles(tableName, service.ContentInputStyles);
+            await ContentTableCreateOrUpdateStylesAsync(tableName, service.ContentInputStyles);
         }
 
-        private void ContentTableCreateOrUpdateStyles(string tableName, List<InputStyle> inputStyles)
+        public async Task<bool> IsContentTableUsedAsync(string tableName)
         {
-            var styleInfoList = new List<TableStyleInfo>();
+            var count = await _siteRepository.GetTableCountAsync(tableName);
+
+            if (count > 0) return true;
+
+            var contentModelPluginIdList = await _channelRepository.GetContentModelPluginIdListAsync();
+            foreach (var pluginId in contentModelPluginIdList)
+            {
+                var service = await GetServiceAsync(pluginId);
+                if (service != null && IsContentTable(service) && service.ContentTableName == tableName)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private async Task ContentTableCreateOrUpdateStylesAsync(string tableName, List<InputStyle> inputStyles)
+        {
+            var styleInfoList = new List<TableStyle>();
             var columnTaxis = 0;
             foreach (var inputStyle in inputStyles)
             {
                 columnTaxis++;
-                var styleInfo = _tableStyleRepository.GetTableStyleInfo(tableName, inputStyle.AttributeName, new List<int> { 0 });
+                var styleInfo = await _tableStyleRepository.GetTableStyleInfoAsync(tableName, inputStyle.AttributeName, new List<int> { 0 });
 
                 var isEquals = true;
 
@@ -103,10 +96,10 @@ namespace SS.CMS.Core.Services
                     styleInfo.Taxis = columnTaxis;
                 }
 
-                if (styleInfo.Required != inputStyle.IsRequired)
+                if (styleInfo.IsRequired != inputStyle.IsRequired)
                 {
                     isEquals = false;
-                    styleInfo.Required = inputStyle.IsRequired;
+                    styleInfo.IsRequired = inputStyle.IsRequired;
                 }
 
                 var validateType = ValidateType.GetValidateType(styleInfo.ValidateType);
@@ -148,7 +141,7 @@ namespace SS.CMS.Core.Services
 
                 if (!(styleInfo.StyleItems == null && inputStyle.ListItems == null))
                 {
-                    var styleItems = styleInfo.StyleItems ?? new List<TableStyleItemInfo>();
+                    var styleItems = styleInfo.StyleItems ?? new List<TableStyleItem>();
                     var listItems = inputStyle.ListItems ?? new List<InputListItem>();
 
                     if (styleItems.Count > listItems.Count)
@@ -163,12 +156,12 @@ namespace SS.CMS.Core.Services
                         if (styleItems.Count < i + 1)
                         {
                             isEquals = false;
-                            styleItems.Add(new TableStyleItemInfo
+                            styleItems.Add(new TableStyleItem
                             {
                                 TableStyleId = styleInfo.Id,
                                 ItemTitle = listItem.Text,
                                 ItemValue = listItem.Value,
-                                Selected = listItem.Selected
+                                IsSelected = listItem.Selected
                             });
                         }
                         else
@@ -187,10 +180,10 @@ namespace SS.CMS.Core.Services
                                 styleItem.ItemValue = listItem.Value;
                             }
 
-                            if (styleItem.Selected != listItem.Selected)
+                            if (styleItem.IsSelected != listItem.Selected)
                             {
                                 isEquals = false;
-                                styleItem.Selected = listItem.Selected;
+                                styleItem.IsSelected = listItem.Selected;
                             }
                         }
                     }
@@ -198,8 +191,8 @@ namespace SS.CMS.Core.Services
 
                 if (isEquals) continue;
 
-                styleInfo.VisibleInList = false;
-                styleInfo.Validate = true;
+                styleInfo.IsVisibleInList = false;
+                styleInfo.IsValidate = true;
                 styleInfoList.Add(styleInfo);
             }
 
@@ -207,32 +200,13 @@ namespace SS.CMS.Core.Services
             {
                 if (styleInfo.Id == 0)
                 {
-                    DataProvider.TableStyleRepository.Insert(styleInfo);
+                    await _tableStyleRepository.InsertAsync(styleInfo);
                 }
                 else
                 {
-                    DataProvider.TableStyleRepository.Update(styleInfo);
+                    await _tableStyleRepository.UpdateAsync(styleInfo);
                 }
             }
-        }
-
-        public bool IsContentTableUsed(string tableName)
-        {
-            var count = _siteRepository.GetTableCount(tableName);
-
-            if (count > 0) return true;
-
-            var contentModelPluginIdList = DataProvider.ChannelRepository.GetContentModelPluginIdList();
-            foreach (var pluginId in contentModelPluginIdList)
-            {
-                var service = GetService(pluginId);
-                if (service != null && IsContentTable(service) && service.ContentTableName == tableName)
-                {
-                    return true;
-                }
-            }
-
-            return false;
         }
     }
 }

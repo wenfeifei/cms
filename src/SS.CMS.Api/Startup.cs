@@ -1,3 +1,5 @@
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -5,9 +7,12 @@ using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.IdentityModel.Tokens;
+using Newtonsoft.Json.Serialization;
 using NSwag;
-using SS.CMS.Abstractions.Services;
 using SS.CMS.Core.Services;
+using SS.CMS.Services;
+using SS.CMS.Utils;
 
 namespace SS.CMS.Api
 {
@@ -30,6 +35,35 @@ namespace SS.CMS.Api
                 options.AllowSynchronousIO = true;
             });
 
+            var settingsManager = services.AddSettingsManager(_config, _env.ContentRootPath, _env.WebRootPath);
+
+            services.AddDistributedCache(settingsManager.CacheType, settingsManager.CacheConnectionString);
+            services.AddDatabase(settingsManager.DatabaseType, settingsManager.DatabaseConnectionString);
+            services.AddRepositories();
+            services.AddPathManager();
+            services.AddPluginManager();
+            services.AddUrlManager();
+            services.AddFileManager();
+            services.AddCreateManager();
+
+            services.AddScoped<IUserManager, UserManager>();
+
+            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddJwtBearer(options =>
+                {
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuer = true,
+                        ValidateAudience = true,
+                        ValidateLifetime = true,
+                        ValidateIssuerSigningKey = true,
+                        ValidIssuer = "yourdomain.com",
+                        ValidAudience = "yourdomain.com",
+                        IssuerSigningKey = new SymmetricSecurityKey(
+                            Encoding.UTF8.GetBytes(settingsManager.SecurityKey))
+                    };
+                });
+
             services.AddCors(options =>
                 {
                     options.AddPolicy(
@@ -43,20 +77,26 @@ namespace SS.CMS.Api
                         });
                 });
 
+            // In production, the VueJs files will be served from this directory
+            services.AddSpaStaticFiles(configuration =>
+            {
+                configuration.RootPath = "admin";
+            });
+
             services.AddControllers()
-                .AddNewtonsoftJson();
+                .AddNewtonsoftJson(options =>
+                {
+                    options.SerializerSettings.ContractResolver
+                        = new CamelCasePropertyNamesContractResolver();
+                });
+            // services.AddApiVersioning(o =>
+            // {
+            //     o.ReportApiVersions = true;
+            //     o.AssumeDefaultVersionWhenUnspecified = true;
+            //     o.DefaultApiVersion = new ApiVersion(1, 0);
+            // });
 
             services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
-            //services.AddScoped(provider =>
-            //{
-            //    var httpContext = provider.GetRequiredService<IHttpContextAccessor>().HttpContext;
-            //    return new Request(httpContext, null);
-            //});
-            //services.AddScoped(provider =>
-            //{
-            //    var httpContext = provider.GetRequiredService<IHttpContextAccessor>().HttpContext;
-            //    return new Response(httpContext);
-            //});
 
             services.AddOpenApiDocument(config =>
             {
@@ -104,25 +144,7 @@ namespace SS.CMS.Api
             //AppContext.Load(_env.ContentRootPath, _env.WebRootPath, _config);
             //AppContext.Db = db;
 
-            services.AddMemoryCache();
-            services.AddDistributedMemoryCache();
 
-            services.AddSettingsManager(_config, _env.ContentRootPath, _env.WebRootPath);
-            services.AddCacheManager();
-            services.AddRepositories();
-            services.AddPathManager();
-            services.AddPluginManager();
-            services.AddUrlManager();
-            services.AddMenuManager();
-            services.AddFileManager();
-            services.AddCreateManager();
-            services.AddIdentityManager();
-
-            // In production, the React files will be served from this directory
-            services.AddSpaStaticFiles(configuration =>
-            {
-                configuration.RootPath = "ClientApp/build";
-            });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -146,37 +168,20 @@ namespace SS.CMS.Api
             app.UseStaticFiles();
             app.UseSpaStaticFiles();
 
-            //app.UseRouting();
-
-            //app.UseAuthorization();
-
-            //app.UseEndpoints(endpoints =>
-            //{
-            //    endpoints.MapControllers();
-            //});
-
-            // PluginManager.Load(() =>
-            // {
-            //     var httpContext = app.ApplicationServices.GetRequiredService<IHttpContextAccessor>().HttpContext;
-            //     return new Request(httpContext);
-            // });
-
-            app.Map("/" + settingsManager.ApiPrefix.Trim('/'), api =>
+            app.Map(Constants.ApiPrefix, api =>
             {
                 api.Map("/ping", map => map.Run(async
                     ctx => await ctx.Response.WriteAsync("pong")));
 
                 api.UseRouting();
 
+                api.UseAuthentication();
                 api.UseAuthorization();
 
                 api.UseEndpoints(endpoints =>
                 {
                     endpoints.MapControllers();
                 });
-
-                //api.UseAuthentication();
-                //api.UseAuthorization();
 
                 api.UseOpenApi();
                 api.UseSwaggerUi3();
@@ -187,24 +192,20 @@ namespace SS.CMS.Api
                 });
             });
 
-            app.Map("/" + settingsManager.AdminPrefix.Trim('/'), admin =>
-            {
-                admin.Map("/ping", map => map.Run(async
-                    ctx => await ctx.Response.WriteAsync("pong")));
+            // var adminMatch = string.IsNullOrEmpty(settingsManager.AdminPrefix) ? string.Empty : $"/{settingsManager.AdminPrefix}";
+            // app.Map(adminMatch, admin =>
+            // {
+            //     admin.UseRouting();
 
-                admin.UseRouting();
-
-                admin.UseAuthorization();
-
-                admin.UseSpa(spa =>
-                {
-                    spa.Options.SourcePath = "ClientApp";
-                    if (_env.IsDevelopment())
-                    {
-                        spa.UseProxyToSpaDevelopmentServer("http://localhost:3000/admin");
-                    }
-                });
-            });
+            //     admin.UseSpa(spa =>
+            //     {
+            //         spa.Options.SourcePath = "ClientApp";
+            //         if (_env.IsDevelopment())
+            //         {
+            //             spa.UseProxyToSpaDevelopmentServer("http://localhost:3000");
+            //         }
+            //     });
+            // });
         }
     }
 }

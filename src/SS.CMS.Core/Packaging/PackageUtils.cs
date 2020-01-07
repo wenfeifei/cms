@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using NuGet.Packaging;
-using SS.CMS.Abstractions.Enums;
 using SS.CMS.Core.Common;
 using SS.CMS.Core.Services;
 using SS.CMS.Utils;
@@ -17,7 +16,6 @@ namespace SS.CMS.Core.Packaging
     {
         public const string PackageIdSsCms = "SS.CMS";
         public const string PackageIdSiteServerPlugin = "SiteServer.Plugin";
-        public const string VersionDev = "0.0.0";
 
         public const string CacheKeySsCmsIsDownload = nameof(CacheKeySsCmsIsDownload);
 

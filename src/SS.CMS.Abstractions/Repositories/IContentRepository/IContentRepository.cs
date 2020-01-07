@@ -1,9 +1,8 @@
 ﻿using SS.CMS.Data;
 
-namespace SS.CMS.Abstractions.Repositories
+namespace SS.CMS.Repositories
 {
     public partial interface IContentRepository : IRepository
     {
-        string GetContentTableName(int siteId);
     }
 }

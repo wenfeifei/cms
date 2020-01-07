@@ -1,11 +1,11 @@
 ﻿using System.Text;
-using SS.CMS.Abstractions.Enums;
-using SS.CMS.Abstractions.Models;
-using SS.CMS.Abstractions.Repositories;
-using SS.CMS.Abstractions.Services;
-using SS.CMS.Core.Cache;
+using System.Threading.Tasks;
 using SS.CMS.Core.Models.Attributes;
-using SS.CMS.Core.Models.Enumerations;
+using SS.CMS.Core.Common.Enums;
+using SS.CMS.Enums;
+using SS.CMS.Models;
+using SS.CMS.Repositories;
+using SS.CMS.Services;
 using SS.CMS.Utils;
 
 namespace SS.CMS.Core.Common
@@ -15,15 +15,17 @@ namespace SS.CMS.Core.Common
         private IPathManager _pathManager;
         private IFileManager _fileManager;
         private ISiteRepository _siteRepository;
+        private IChannelRepository _channelRepository;
 
-        public CrossSiteTransManager(IPathManager pathManager, IFileManager fileManager, ISiteRepository siteRepository)
+        public CrossSiteTransManager(IPathManager pathManager, IFileManager fileManager, ISiteRepository siteRepository, IChannelRepository channelRepository)
         {
             _pathManager = pathManager;
             _fileManager = fileManager;
             _siteRepository = siteRepository;
+            _channelRepository = channelRepository;
         }
 
-        public bool IsCrossSiteTrans(SiteInfo siteInfo, ChannelInfo channelInfo)
+        public async Task<bool> IsCrossSiteTransAsync(Site siteInfo, Channel channelInfo)
         {
             var isCrossSiteTrans = false;
 
@@ -36,7 +38,7 @@ namespace SS.CMS.Core.Common
                     {
                         if (transType == ECrossSiteTransType.AllParentSite)
                         {
-                            var parentSiteId = _siteRepository.GetParentSiteId(siteInfo.Id);
+                            var parentSiteId = await _siteRepository.GetParentSiteIdAsync(siteInfo.Id);
                             if (parentSiteId != 0)
                             {
                                 isCrossSiteTrans = true;
@@ -54,7 +56,7 @@ namespace SS.CMS.Core.Common
                         {
                             if (channelInfo.TransSiteId > 0)
                             {
-                                var theSiteInfo = _siteRepository.GetSiteInfo(channelInfo.TransSiteId);
+                                var theSiteInfo = await _siteRepository.GetSiteAsync(channelInfo.TransSiteId);
                                 if (theSiteInfo != null)
                                 {
                                     isCrossSiteTrans = true;
@@ -63,7 +65,7 @@ namespace SS.CMS.Core.Common
                         }
                         else if (transType == ECrossSiteTransType.ParentSite)
                         {
-                            var parentSiteId = _siteRepository.GetParentSiteId(siteInfo.Id);
+                            var parentSiteId = await _siteRepository.GetParentSiteIdAsync(siteInfo.Id);
                             if (parentSiteId != 0)
                             {
                                 isCrossSiteTrans = true;
@@ -76,7 +78,7 @@ namespace SS.CMS.Core.Common
             return isCrossSiteTrans;
         }
 
-        public bool IsAutomatic(ChannelInfo channelInfo)
+        public bool IsAutomatic(Channel channelInfo)
         {
             var isAutomatic = false;
 
@@ -86,14 +88,14 @@ namespace SS.CMS.Core.Common
 
                 if (transType == ECrossSiteTransType.SelfSite || transType == ECrossSiteTransType.ParentSite || transType == ECrossSiteTransType.SpecifiedSite)
                 {
-                    isAutomatic = channelInfo.TransIsAutomatic;
+                    isAutomatic = channelInfo.IsTransAutomatic;
                 }
             }
 
             return isAutomatic;
         }
 
-        public string GetDescription(int siteId, ChannelInfo channelInfo)
+        public async Task<string> GetDescriptionAsync(int siteId, Channel channelInfo)
         {
             var results = string.Empty;
 
@@ -111,22 +113,22 @@ namespace SS.CMS.Core.Common
                 }
                 else if (transType == ECrossSiteTransType.SelfSite || transType == ECrossSiteTransType.SpecifiedSite || transType == ECrossSiteTransType.ParentSite)
                 {
-                    SiteInfo siteInfo = null;
+                    Site siteInfo = null;
 
                     if (transType == ECrossSiteTransType.SelfSite)
                     {
-                        siteInfo = _siteRepository.GetSiteInfo(siteId);
+                        siteInfo = await _siteRepository.GetSiteAsync(siteId);
                     }
                     else if (transType == ECrossSiteTransType.SpecifiedSite)
                     {
-                        siteInfo = _siteRepository.GetSiteInfo(channelInfo.TransSiteId);
+                        siteInfo = await _siteRepository.GetSiteAsync(channelInfo.TransSiteId);
                     }
                     else
                     {
-                        var parentSiteId = _siteRepository.GetParentSiteId(siteId);
+                        var parentSiteId = await _siteRepository.GetParentSiteIdAsync(siteId);
                         if (parentSiteId != 0)
                         {
-                            siteInfo = _siteRepository.GetSiteInfo(parentSiteId);
+                            siteInfo = await _siteRepository.GetSiteAsync(parentSiteId);
                         }
                     }
 
@@ -136,10 +138,10 @@ namespace SS.CMS.Core.Common
                         var channelIdArrayList = TranslateUtils.StringCollectionToIntList(channelInfo.TransChannelIds);
                         foreach (int channelId in channelIdArrayList)
                         {
-                            var theNodeInfo = ChannelManager.GetChannelInfo(siteInfo.Id, channelId);
-                            if (theNodeInfo != null)
+                            var node = await _channelRepository.GetChannelAsync(channelId);
+                            if (node != null)
                             {
-                                nodeNameBuilder.Append(theNodeInfo.ChannelName).Append(",");
+                                nodeNameBuilder.Append(node.ChannelName).Append(",");
                             }
                         }
                         if (nodeNameBuilder.Length > 0)
@@ -153,16 +155,17 @@ namespace SS.CMS.Core.Common
             return results;
         }
 
-        public void TransContentInfo(SiteInfo siteInfo, ChannelInfo channelInfo, int contentId, SiteInfo targetSiteInfo, int targetChannelId)
+        public async Task TransContentInfoAsync(Site siteInfo, Channel channelInfo, int contentId, Site targetSiteInfo, int targetChannelId)
         {
-            var targetChannelInfo = ChannelManager.GetChannelInfo(targetSiteInfo.Id, targetChannelId);
+            var targetChannel = await _channelRepository.GetChannelAsync(targetChannelId);
 
-            var contentInfo = channelInfo.ContentRepository.GetContentInfo(siteInfo, channelInfo, contentId);
+            var contentRepository = _channelRepository.GetContentRepository(siteInfo, channelInfo);
+            var contentInfo = await contentRepository.GetContentInfoAsync(contentId);
             _fileManager.MoveFileByContentInfo(siteInfo, targetSiteInfo, contentInfo);
             contentInfo.SiteId = targetSiteInfo.Id;
             contentInfo.SourceId = channelInfo.Id;
             contentInfo.ChannelId = targetChannelId;
-            contentInfo.Checked = targetSiteInfo.IsCrossSiteTransChecked;
+            contentInfo.IsChecked = targetSiteInfo.IsCrossSiteTransChecked;
             contentInfo.CheckedLevel = 0;
 
             //复制
@@ -189,9 +192,10 @@ namespace SS.CMS.Core.Common
                 contentInfo.Set(ContentAttribute.TranslateContentType, TranslateContentType.ReferenceContent.ToString());
             }
 
-            if (targetChannelInfo != null)
+            if (targetChannel != null)
             {
-                targetChannelInfo.ContentRepository.Insert(targetSiteInfo, targetChannelInfo, contentInfo);
+                var targetContentRepository = _channelRepository.GetContentRepository(targetSiteInfo, targetChannel);
+                await targetContentRepository.InsertAsync(targetSiteInfo, targetChannel, contentInfo);
 
                 #region 复制资源
                 //资源：图片，文件，视频
@@ -232,7 +236,7 @@ namespace SS.CMS.Core.Common
             }
         }
 
-        private void CopyReferenceFiles(SiteInfo targetSiteInfo, string sourceUrl, SiteInfo sourceSiteInfo)
+        private void CopyReferenceFiles(Site targetSiteInfo, string sourceUrl, Site sourceSiteInfo)
         {
             var targetUrl = StringUtils.ReplaceFirst(sourceSiteInfo.SiteDir, sourceUrl, targetSiteInfo.SiteDir);
             if (!FileUtils.IsFileExists(targetUrl))

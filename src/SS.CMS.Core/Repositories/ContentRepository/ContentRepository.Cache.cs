@@ -1,65 +1,51 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using SS.CMS.Abstractions;
-using SS.CMS.Abstractions.Enums;
-using SS.CMS.Abstractions.Models;
-using SS.CMS.Core.Cache;
-using SS.CMS.Core.Cache.Stl;
+using System.Threading.Tasks;
 using SS.CMS.Core.Common;
 using SS.CMS.Core.Models.Attributes;
 using SS.CMS.Core.Plugin;
+using SS.CMS.Enums;
+using SS.CMS.Models;
 using SS.CMS.Utils;
 
 namespace SS.CMS.Core.Repositories
 {
     public partial class ContentRepository
     {
-        public void RemoveCacheBySiteId(string tableName, int siteId)
+        public async Task RemoveCacheBySiteIdAsync(string tableName, int siteId)
         {
-            foreach (var channelId in ChannelManager.GetChannelIdList(siteId))
+            foreach (var channelId in await _channelRepository.GetIdListAsync(siteId))
             {
                 ListRemove(channelId);
-                ContentRemove(channelId);
             }
             CountClear(tableName);
-            StlClearCache();
         }
 
         public void RemoveCache(string tableName, int channelId)
         {
             ListRemove(channelId);
-            ContentRemove(channelId);
             CountClear(tableName);
-            StlClearCache();
         }
 
         public void RemoveCountCache(string tableName)
         {
             CountClear(tableName);
-            StlClearCache();
         }
 
-        public void InsertCache(SiteInfo siteInfo, ChannelInfo channelInfo, ContentInfo contentInfo)
+        private async Task InsertCacheAsync(Site siteInfo, Channel channelInfo, Content contentInfo)
         {
             if (contentInfo.SourceId == SourceManager.Preview) return;
 
             ListAdd(channelInfo, contentInfo);
 
-            var dict = ContentGetContentDict(contentInfo.ChannelId);
-            dict[contentInfo.Id] = contentInfo;
-
-            var tableName = ChannelManager.GetTableName(_pluginManager, siteInfo, channelInfo);
-            CountAdd(tableName, contentInfo);
-
-            StlClearCache();
+            var tableName = _channelRepository.GetTableName(siteInfo, channelInfo);
+            await CountAddAsync(tableName, contentInfo);
         }
 
-        public void UpdateCache(SiteInfo siteInfo, ChannelInfo channelInfo, ContentInfo contentInfoToUpdate)
+        private async Task UpdateCacheAsync(Site siteInfo, Channel channelInfo, Content contentInfoToUpdate)
         {
-            var dict = ContentGetContentDict(channelInfo.Id);
-
-            var contentInfo = GetContentInfo(siteInfo, channelInfo, contentInfoToUpdate.Id);
+            var contentInfo = await GetContentInfoAsync(contentInfoToUpdate.Id);
             if (contentInfo != null)
             {
                 if (ListIsChanged(channelInfo, contentInfo, contentInfoToUpdate))
@@ -69,105 +55,18 @@ namespace SS.CMS.Core.Repositories
 
                 if (CountIsChanged(contentInfo, contentInfoToUpdate))
                 {
-                    var tableName = ChannelManager.GetTableName(_pluginManager, siteInfo, channelInfo);
-                    CountRemove(tableName, contentInfo);
-                    CountAdd(tableName, contentInfoToUpdate);
+                    var tableName = _channelRepository.GetTableName(siteInfo, channelInfo);
+                    await CountRemoveAsync(tableName, contentInfo);
+                    await CountAddAsync(tableName, contentInfoToUpdate);
                 }
             }
-
-            dict[contentInfoToUpdate.Id] = contentInfoToUpdate;
-
-            StlClearCache();
         }
 
-        public List<ContentColumn> GetContentColumns(SiteInfo siteInfo, ChannelInfo channelInfo, bool includeAll)
-        {
-            var columns = new List<ContentColumn>();
-
-            var attributesOfDisplay = TranslateUtils.StringCollectionToStringCollection(channelInfo.ContentAttributesOfDisplay);
-            var pluginIds = _pluginManager.GetContentPluginIds(channelInfo);
-            var pluginColumns = _pluginManager.GetContentColumns(pluginIds);
-
-            var styleInfoList = ContentUtility.GetAllTableStyleInfoList(_tableStyleRepository.GetContentStyleInfoList(_pluginManager, siteInfo, channelInfo));
-
-            styleInfoList.Insert(0, new TableStyleInfo
-            {
-                AttributeName = ContentAttribute.Sequence,
-                DisplayName = "序号"
-            });
-
-            foreach (var styleInfo in styleInfoList)
-            {
-                if (styleInfo.Type == InputType.TextEditor) continue;
-
-                var column = new ContentColumn
-                {
-                    AttributeName = styleInfo.AttributeName,
-                    DisplayName = styleInfo.DisplayName,
-                    InputType = styleInfo.Type
-                };
-                if (styleInfo.AttributeName == ContentAttribute.Title)
-                {
-                    column.IsList = true;
-                }
-                else
-                {
-                    if (attributesOfDisplay.Contains(styleInfo.AttributeName))
-                    {
-                        column.IsList = true;
-                    }
-                }
-
-                if (StringUtils.ContainsIgnoreCase(ContentAttribute.CalculateAttributes.Value, styleInfo.AttributeName))
-                {
-                    column.IsCalculate = true;
-                }
-
-                if (includeAll || column.IsList)
-                {
-                    columns.Add(column);
-                }
-            }
-
-            if (pluginColumns != null)
-            {
-                foreach (var pluginId in pluginColumns.Keys)
-                {
-                    var contentColumns = pluginColumns[pluginId];
-                    if (contentColumns == null || contentColumns.Count == 0) continue;
-
-                    foreach (var columnName in contentColumns.Keys)
-                    {
-                        var attributeName = $"{pluginId}:{columnName}";
-                        var column = new ContentColumn
-                        {
-                            AttributeName = attributeName,
-                            DisplayName = $"{columnName}({pluginId})",
-                            InputType = InputType.Text,
-                            IsCalculate = true
-                        };
-
-                        if (attributesOfDisplay.Contains(attributeName))
-                        {
-                            column.IsList = true;
-                        }
-
-                        if (includeAll || column.IsList)
-                        {
-                            columns.Add(column);
-                        }
-                    }
-                }
-            }
-
-            return columns;
-        }
-
-        public ContentInfo Calculate(int sequence, ContentInfo contentInfo, List<ContentColumn> columns, Dictionary<string, Dictionary<string, Func<IContentContext, string>>> pluginColumns)
+        public async Task<Content> CalculateAsync(int sequence, Content contentInfo, List<ContentColumn> columns, Dictionary<string, Dictionary<string, Func<IContentContext, string>>> pluginColumns)
         {
             if (contentInfo == null) return null;
 
-            var retVal = new ContentInfo(contentInfo.ToDictionary());
+            var retVal = new Content(contentInfo.ToDictionary());
 
             foreach (var column in columns)
             {
@@ -177,25 +76,16 @@ namespace SS.CMS.Core.Repositories
                 {
                     retVal.Set(ContentAttribute.Sequence, sequence);
                 }
-                else if (StringUtils.EqualsIgnoreCase(column.AttributeName, ContentAttribute.AdminId))
+                else if (StringUtils.EqualsIgnoreCase(column.AttributeName, ContentAttribute.SourceId))
                 {
-                    var value = string.Empty;
-                    if (contentInfo.AdminId > 0)
-                    {
-                        var adminInfo = _administratorRepository.GetAdminInfoByUserId(contentInfo.AdminId);
-                        if (adminInfo != null)
-                        {
-                            value = string.IsNullOrEmpty(adminInfo.DisplayName) ? adminInfo.UserName : adminInfo.DisplayName;
-                        }
-                    }
-                    retVal.Set(ContentAttribute.AdminId, value);
+                    retVal.Set(ContentAttribute.SourceId, await _channelRepository.GetSourceNameAsync(contentInfo.SourceId));
                 }
                 else if (StringUtils.EqualsIgnoreCase(column.AttributeName, ContentAttribute.UserId))
                 {
                     var value = string.Empty;
                     if (contentInfo.UserId > 0)
                     {
-                        var userInfo = _userRepository.GetUserInfoByUserId(contentInfo.UserId);
+                        var userInfo = await _userRepository.GetByUserIdAsync(contentInfo.UserId);
                         if (userInfo != null)
                         {
                             value = string.IsNullOrEmpty(userInfo.DisplayName) ? userInfo.UserName : userInfo.DisplayName;
@@ -203,35 +93,18 @@ namespace SS.CMS.Core.Repositories
                     }
                     retVal.Set(ContentAttribute.UserId, value);
                 }
-                else if (StringUtils.EqualsIgnoreCase(column.AttributeName, ContentAttribute.SourceId))
-                {
-                    retVal.Set(ContentAttribute.SourceId, _siteRepository.GetSourceName(contentInfo.SourceId));
-                }
-                else if (StringUtils.EqualsIgnoreCase(column.AttributeName, ContentAttribute.AddUserName))
+                else if (StringUtils.EqualsIgnoreCase(column.AttributeName, ContentAttribute.LastModifiedUserId))
                 {
                     var value = string.Empty;
-                    if (!string.IsNullOrEmpty(contentInfo.AddUserName))
+                    if (contentInfo.LastModifiedUserId > 0)
                     {
-                        var adminInfo = _administratorRepository.GetAdminInfoByUserName(contentInfo.AddUserName);
-                        if (adminInfo != null)
+                        var userInfo = await _userRepository.GetByUserIdAsync(contentInfo.LastModifiedUserId);
+                        if (userInfo != null)
                         {
-                            value = string.IsNullOrEmpty(adminInfo.DisplayName) ? adminInfo.UserName : adminInfo.DisplayName;
+                            value = string.IsNullOrEmpty(userInfo.DisplayName) ? userInfo.UserName : userInfo.DisplayName;
                         }
                     }
-                    retVal.Set(ContentAttribute.AddUserName, value);
-                }
-                else if (StringUtils.EqualsIgnoreCase(column.AttributeName, ContentAttribute.LastEditUserName))
-                {
-                    var value = string.Empty;
-                    if (!string.IsNullOrEmpty(contentInfo.LastEditUserName))
-                    {
-                        var adminInfo = _administratorRepository.GetAdminInfoByUserName(contentInfo.LastEditUserName);
-                        if (adminInfo != null)
-                        {
-                            value = string.IsNullOrEmpty(adminInfo.DisplayName) ? adminInfo.UserName : adminInfo.DisplayName;
-                        }
-                    }
-                    retVal.Set(ContentAttribute.LastEditUserName, value);
+                    retVal.Set(ContentAttribute.LastModifiedUserId, value);
                 }
             }
 
@@ -261,7 +134,7 @@ namespace SS.CMS.Core.Repositories
                         }
                         catch (Exception ex)
                         {
-                            LogUtils.AddErrorLog(pluginId, ex);
+                            await _errorLogRepository.AddErrorLogAsync(pluginId, ex);
                         }
                     }
                 }
@@ -270,7 +143,7 @@ namespace SS.CMS.Core.Repositories
             return retVal;
         }
 
-        public bool IsCreatable(ChannelInfo channelInfo, ContentInfo contentInfo)
+        public bool IsCreatable(Channel channelInfo, Content contentInfo)
         {
             if (channelInfo == null || contentInfo == null) return false;
 
@@ -282,7 +155,7 @@ namespace SS.CMS.Core.Repositories
                 return false;
             }
 
-            return channelInfo.IsContentCreatable && string.IsNullOrEmpty(contentInfo.LinkUrl) && contentInfo.Checked && contentInfo.SourceId != SourceManager.Preview && contentInfo.ChannelId > 0;
+            return channelInfo.IsContentCreatable && string.IsNullOrEmpty(contentInfo.LinkUrl) && contentInfo.IsChecked && contentInfo.SourceId != SourceManager.Preview && contentInfo.ChannelId > 0;
         }
     }
 }

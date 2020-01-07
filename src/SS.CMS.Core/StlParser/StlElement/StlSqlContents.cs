@@ -1,8 +1,8 @@
 ﻿using System.Collections.Generic;
 using System.Text;
-using SS.CMS.Core.Models.Enumerations;
+using System.Threading.Tasks;
+using SS.CMS.Core.Common.Enums;
 using SS.CMS.Core.StlParser.Models;
-using SS.CMS.Core.StlParser.Template;
 using SS.CMS.Core.StlParser.Utility;
 
 namespace SS.CMS.Core.StlParser.StlElement
@@ -24,22 +24,22 @@ namespace SS.CMS.Core.StlParser.StlElement
         [StlAttribute(Title = "数据库查询语句")]
         public const string QueryString = nameof(QueryString);
 
-        public static object Parse(ParseContext parseContext)
+        public static async Task<object> ParseAsync(ParseContext parseContext)
         {
             var context = parseContext.Clone(EContextType.SqlContent);
-            var listInfo = ListInfo.GetListInfo(context);
+            var listInfo = await ListInfo.GetListInfoAsync(context);
             // var dataSource = StlDataUtility.GetSqlContentsDataSource(listInfo.ConnectionString, listInfo.QueryString, listInfo.StartNum, listInfo.TotalNum, listInfo.OrderByString);
-            var sqlList = StlDataUtility.GetContainerSqlList(context.SettingsManager, listInfo.ConnectionString, listInfo.QueryString, listInfo.StartNum, listInfo.TotalNum, listInfo.Order);
+            var sqlList = parseContext.GetContainerSqlList(listInfo.ConnectionString, listInfo.QueryString, listInfo.StartNum, listInfo.TotalNum, listInfo.Order);
 
             if (context.IsStlEntity)
             {
                 return ParseEntity(sqlList);
             }
 
-            return ParseElement(context, listInfo, sqlList);
+            return await ParseElementAsync(context, listInfo, sqlList);
         }
 
-        public static string ParseElement(ParseContext context, ListInfo listInfo, List<Container.Sql> sqlList)
+        public static async Task<string> ParseElementAsync(ParseContext context, ListInfo listInfo, List<KeyValuePair<int, Dictionary<string, object>>> sqlList)
         {
             if (sqlList == null || sqlList.Count == 0) return string.Empty;
 
@@ -74,7 +74,7 @@ namespace SS.CMS.Core.StlParser.StlElement
 
                     context.PageInfo.SqlItems.Push(sql);
                     var templateString = isAlternative ? listInfo.AlternatingItemTemplate : listInfo.ItemTemplate;
-                    builder.Append(TemplateUtility.GetSqlContentsTemplateString(templateString, listInfo.SelectedItems, listInfo.SelectedValues, string.Empty, context));
+                    builder.Append(await TemplateUtility.GetSqlContentsTemplateStringAsync(templateString, listInfo.SelectedItems, listInfo.SelectedValues, string.Empty, context));
                 }
 
                 if (!string.IsNullOrEmpty(listInfo.FooterTemplate))
@@ -123,7 +123,7 @@ namespace SS.CMS.Core.StlParser.StlElement
 
                                     context.PageInfo.SqlItems.Push(sql);
                                     var templateString = isAlternative ? listInfo.AlternatingItemTemplate : listInfo.ItemTemplate;
-                                    cellHtml = TemplateUtility.GetSqlContentsTemplateString(templateString, listInfo.SelectedItems, listInfo.SelectedValues, string.Empty, context);
+                                    cellHtml = await TemplateUtility.GetSqlContentsTemplateStringAsync(templateString, listInfo.SelectedItems, listInfo.SelectedValues, string.Empty, context);
                                 }
                                 tr.AddCell(cellHtml, cellAttributes);
                                 itemIndex++;
@@ -221,7 +221,7 @@ namespace SS.CMS.Core.StlParser.StlElement
             // return parsedContent;
         }
 
-        private static object ParseEntity(List<Container.Sql> sqlList)
+        private static object ParseEntity(List<KeyValuePair<int, Dictionary<string, object>>> sqlList)
         {
             // var table = dataSource.Tables[0];
             // return TranslateUtils.DataTableToDictionaryList(table);
@@ -229,7 +229,7 @@ namespace SS.CMS.Core.StlParser.StlElement
             var dictList = new List<Dictionary<string, object>>();
             foreach (var sql in sqlList)
             {
-                dictList.Add(sql.Dictionary);
+                dictList.Add(sql.Value);
             }
             return dictList;
         }

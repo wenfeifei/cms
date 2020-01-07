@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using SS.CMS.Abstractions.Enums;
-using SS.CMS.Abstractions.Models;
+using SS.CMS.Enums;
+using SS.CMS.Models;
 
-namespace SS.CMS.Abstractions
+namespace SS.CMS
 {
     /// <summary>
     /// 为STL解析事件提供数据。
@@ -12,7 +12,7 @@ namespace SS.CMS.Abstractions
     public class ParseEventArgs : EventArgs
     {
         /// <summary>
-        /// 初始化 <see cref="T:SS.CMS.Abstractions.ParseEventArgs" /> 类的新实例。
+        /// 初始化 <see cref="T:SS.CMS.ParseEventArgs" /> 类的新实例。
         /// </summary>
         /// <param name="siteId">站点Id。</param>
         /// <param name="channelId">栏目Id。</param>
@@ -25,7 +25,7 @@ namespace SS.CMS.Abstractions
         /// <param name="bodyCodes">生成的Html页面中包含在body标签内的代码。</param>
         /// <param name="footCodes">生成的Html页面中包含在页面最底部的代码。</param>
         /// <param name="contentBuilder">生成的Html页面代码。</param>
-        public ParseEventArgs(int siteId, int channelId, int contentId, ContentInfo contentInfo, TemplateType templateType, int templateId, string filePath, SortedDictionary<string, string> headCodes, SortedDictionary<string, string> bodyCodes, SortedDictionary<string, string> footCodes, StringBuilder contentBuilder)
+        public ParseEventArgs(int siteId, int channelId, int contentId, Content contentInfo, TemplateType templateType, int templateId, string filePath, SortedDictionary<string, string> headCodes, SortedDictionary<string, string> bodyCodes, SortedDictionary<string, string> footCodes, StringBuilder contentBuilder)
         {
             SiteId = siteId;
             ChannelId = channelId;
@@ -58,7 +58,7 @@ namespace SS.CMS.Abstractions
         /// <summary>
         /// 内容实体。
         /// </summary>
-        ContentInfo ContentInfo { get; }
+        Content ContentInfo { get; }
 
         /// <summary>
         /// 模板类型。

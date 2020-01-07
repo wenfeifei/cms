@@ -1,44 +1,51 @@
 using System.Collections.Specialized;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
-using SS.CMS.Abstractions.Models;
-using SS.CMS.Abstractions.Repositories;
-using SS.CMS.Abstractions.Services;
-using SS.CMS.Core.Cache;
-using SS.CMS.Core.Models;
-using SS.CMS.Core.Services;
 using SS.CMS.Core.StlParser.Models;
+using SS.CMS.Models;
+using SS.CMS.Repositories;
+using SS.CMS.Services;
 
 namespace SS.CMS.Core.StlParser
 {
     public partial class ParseContext
     {
         public IConfiguration Configuration { get; }
+        public IDistributedCache Cache { get; }
         public ISettingsManager SettingsManager { get; }
         public IPluginManager PluginManager { get; }
         public IPathManager PathManager { get; }
         public IUrlManager UrlManager { get; }
         public IFileManager FileManager { get; }
         public ISiteRepository SiteRepository { get; }
+        public IChannelRepository ChannelRepository { get; }
         public IUserRepository UserRepository { get; }
         public ITableStyleRepository TableStyleRepository { get; }
         public ITemplateRepository TemplateRepository { get; }
+        public ITagRepository TagRepository { get; }
+        public IErrorLogRepository ErrorLogRepository { get; }
 
-        public ParseContext(PageInfo pageInfo, IConfiguration configuration, ISettingsManager settingsManager, IPluginManager pluginManager, IPathManager pathManager, IUrlManager urlManager, IFileManager fileManager, ISiteRepository siteRepository, IUserRepository userRepository, ITableStyleRepository tableStyleRepository, ITemplateRepository templateRepository)
+        public ParseContext(PageInfo pageInfo, IConfiguration configuration, IDistributedCache cache, ISettingsManager settingsManager, IPluginManager pluginManager, IPathManager pathManager, IUrlManager urlManager, IFileManager fileManager, ISiteRepository siteRepository, IChannelRepository channelRepository, IUserRepository userRepository, ITableStyleRepository tableStyleRepository, ITemplateRepository templateRepository, ITagRepository tagRepository, IErrorLogRepository errorLogRepository)
         {
             PageInfo = pageInfo;
             ChannelId = pageInfo.PageChannelId;
             ContentId = pageInfo.PageContentId;
 
             Configuration = configuration;
+            Cache = cache;
             SettingsManager = settingsManager;
             PluginManager = pluginManager;
             PathManager = pathManager;
             UrlManager = urlManager;
             FileManager = fileManager;
             SiteRepository = siteRepository;
+            ChannelRepository = channelRepository;
             UserRepository = userRepository;
             TableStyleRepository = tableStyleRepository;
             TemplateRepository = templateRepository;
+            TagRepository = tagRepository;
+            ErrorLogRepository = errorLogRepository;
         }
 
         //用于clone
@@ -98,30 +105,35 @@ namespace SS.CMS.Core.StlParser
 
         public NameValueCollection Attributes { get; set; }
 
-        private ChannelInfo _channelInfo;
-        public ChannelInfo ChannelInfo
+        private Channel _channelInfo;
+        public async Task<Channel> GetChannelAsync()
         {
-            get
-            {
-                if (_channelInfo != null) return _channelInfo;
-                if (ChannelId <= 0) return null;
-                _channelInfo = ChannelManager.GetChannelInfo(SiteId, ChannelId);
-                return _channelInfo;
-            }
-            set { _channelInfo = value; }
+            if (_channelInfo != null) return _channelInfo;
+            if (ChannelId <= 0) return null;
+            _channelInfo = await ChannelRepository.GetChannelAsync(ChannelId);
+            return _channelInfo;
         }
 
-        private ContentInfo _contentInfo;
-        public ContentInfo ContentInfo
+        public Channel ChannelInfo
         {
-            get
-            {
-                if (_contentInfo != null) return _contentInfo;
-                if (ContentId <= 0) return null;
-                _contentInfo = ChannelInfo.ContentRepository.GetContentInfo(SiteInfo, ChannelInfo, ContentId);
-                return _contentInfo;
-            }
-            set { _contentInfo = value; }
+            set => _channelInfo = value;
+        }
+
+        private Content _contentInfo;
+        public async Task<Content> GetContentInfoAsync()
+        {
+            if (_contentInfo != null) return _contentInfo;
+            if (ContentId <= 0) return null;
+            var channelInfo = await GetChannelAsync();
+            var contentRepository = ChannelRepository.GetContentRepository(SiteInfo, channelInfo);
+
+            _contentInfo = await contentRepository.GetContentInfoAsync(ContentId);
+            return _contentInfo;
+        }
+
+        public Content ContentInfo
+        {
+            set => _contentInfo = value;
         }
 
         public bool IsInnerElement { get; set; }

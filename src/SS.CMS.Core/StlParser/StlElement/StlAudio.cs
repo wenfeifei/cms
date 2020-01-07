@@ -1,4 +1,4 @@
-﻿using SS.CMS.Core.Cache.Stl;
+﻿using System.Threading.Tasks;
 using SS.CMS.Core.Common;
 using SS.CMS.Core.Models.Attributes;
 using SS.CMS.Core.StlParser.Models;
@@ -27,7 +27,7 @@ namespace SS.CMS.Core.StlParser.StlElement
         [StlAttribute(Title = "是否循环播放")]
         private const string IsLoop = nameof(IsLoop);
 
-        public static string Parse(ParseContext parseContext)
+        public static async Task<object> ParseAsync(ParseContext parseContext)
         {
             var type = ContentAttribute.VideoUrl;
             var playUrl = string.Empty;
@@ -61,10 +61,10 @@ namespace SS.CMS.Core.StlParser.StlElement
                 }
             }
 
-            return ParseImpl(parseContext, type, playUrl, isAutoPlay, isPreLoad, isLoop);
+            return await ParseImplAsync(parseContext, type, playUrl, isAutoPlay, isPreLoad, isLoop);
         }
 
-        private static string ParseImpl(ParseContext parseContext, string type, string playUrl, bool isAutoPlay, bool isPreLoad, bool isLoop)
+        private static async Task<string> ParseImplAsync(ParseContext parseContext, string type, string playUrl, bool isAutoPlay, bool isPreLoad, bool isLoop)
         {
             var contentId = parseContext.ContentId;
 
@@ -72,16 +72,20 @@ namespace SS.CMS.Core.StlParser.StlElement
             {
                 if (contentId != 0)//获取内容视频
                 {
-                    if (parseContext.ContentInfo == null)
+                    var channelInfo = await parseContext.GetChannelAsync();
+                    var contentRepository = parseContext.ChannelRepository.GetContentRepository(parseContext.SiteInfo, channelInfo);
+
+                    var contentInfo = await parseContext.GetContentInfoAsync();
+                    if (contentInfo == null)
                     {
                         //playUrl = DataProvider.ContentDao.GetValue(pageInfo.SiteInfo.AuxiliaryTableForContent, contentId, type);
-                        playUrl = parseContext.ChannelInfo.ContentRepository.StlGetValue(parseContext.ChannelInfo, contentId, type);
+                        playUrl = await contentRepository.GetValueAsync<string>(contentId, type);
                         if (string.IsNullOrEmpty(playUrl))
                         {
                             if (!StringUtils.EqualsIgnoreCase(type, ContentAttribute.VideoUrl))
                             {
                                 //playUrl = DataProvider.ContentDao.GetValue(pageInfo.SiteInfo.AuxiliaryTableForContent, contentId, ContentAttribute.VideoUrl);
-                                playUrl = parseContext.ChannelInfo.ContentRepository.StlGetValue(parseContext.ChannelInfo, contentId, ContentAttribute.VideoUrl);
+                                playUrl = await contentRepository.GetValueAsync<string>(contentId, ContentAttribute.VideoUrl);
                             }
                         }
                         if (string.IsNullOrEmpty(playUrl))
@@ -89,20 +93,20 @@ namespace SS.CMS.Core.StlParser.StlElement
                             if (!StringUtils.EqualsIgnoreCase(type, ContentAttribute.FileUrl))
                             {
                                 //playUrl = DataProvider.ContentDao.GetValue(pageInfo.SiteInfo.AuxiliaryTableForContent, contentId, ContentAttribute.FileUrl);
-                                playUrl = parseContext.ChannelInfo.ContentRepository.StlGetValue(parseContext.ChannelInfo, contentId, ContentAttribute.FileUrl);
+                                playUrl = await contentRepository.GetValueAsync<string>(contentId, ContentAttribute.FileUrl);
                             }
                         }
                     }
                     else
                     {
-                        playUrl = parseContext.ContentInfo.Get<string>(type);
+                        playUrl = contentInfo.Get<string>(type);
                         if (string.IsNullOrEmpty(playUrl))
                         {
-                            playUrl = parseContext.ContentInfo.VideoUrl;
+                            playUrl = contentInfo.VideoUrl;
                         }
                         if (string.IsNullOrEmpty(playUrl))
                         {
-                            playUrl = parseContext.ContentInfo.FileUrl;
+                            playUrl = contentInfo.FileUrl;
                         }
                     }
                 }
@@ -124,8 +128,8 @@ namespace SS.CMS.Core.StlParser.StlElement
 
                 return $@"
 <audio class=""mejs__player"" src=""{playUrl}"" {(isAutoPlay ? "autoplay" : string.Empty)} {(isPreLoad ? string.Empty : @"preload=""none""")} {(isLoop ? "loop" : string.Empty)}>
-    <object width=""460"" height=""40"" type=""application/x-shockwave-flash"" data=""{SiteFilesAssets.GetUrl(parseContext.ApiUrl, SiteFilesAssets.MediaElement.Swf)}"">
-        <param name=""movie"" value=""{SiteFilesAssets.GetUrl(parseContext.ApiUrl, SiteFilesAssets.MediaElement.Swf)}"" />
+    <object width=""460"" height=""40"" type=""application/x-shockwave-flash"" data=""{SiteFilesAssets.GetUrl(SiteFilesAssets.MediaElement.Swf)}"">
+        <param name=""movie"" value=""{SiteFilesAssets.GetUrl(SiteFilesAssets.MediaElement.Swf)}"" />
         <param name=""flashvars"" value=""controls=true&file={playUrl}"" />
     </object>
 </audio>

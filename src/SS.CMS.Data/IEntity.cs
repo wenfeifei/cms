@@ -8,6 +8,8 @@ namespace SS.CMS.Data
 
         string Guid { get; set; }
 
+        DateTime? CreatedDate { get; set; }
+
         DateTime? LastModifiedDate { get; set; }
     }
 }

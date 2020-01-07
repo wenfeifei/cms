@@ -1,13 +1,13 @@
 ﻿using System.Collections.Specialized;
-using SS.CMS.Abstractions.Models;
-using SS.CMS.Abstractions.Services;
+using SS.CMS.Models;
+using SS.CMS.Services;
 using SS.CMS.Utils;
 
 namespace SS.CMS.Core.StlParser.Models
 {
     public partial class DynamicInfo
     {
-        public static DynamicInfo GetDynamicInfo(ISettingsManager settingsManager, NameValueCollection queryString, string value, int page, UserInfo userInfo)
+        public static DynamicInfo GetDynamicInfo(ISettingsManager settingsManager, NameValueCollection queryString, string value, int page, User userInfo)
         {
             var dynamicInfo = TranslateUtils.JsonDeserialize<DynamicInfo>(settingsManager.Decrypt(value));
             if (dynamicInfo.ChannelId == 0)

@@ -1,9 +1,7 @@
-using System;
-using System.IO;
-using System.Linq;
-using SS.CMS.Abstractions.Enums;
+using System.Threading.Tasks;
+using SS.CMS.Enums;
 
-namespace SS.CMS.Abstractions.Services
+namespace SS.CMS.Services
 {
     public partial interface IPluginManager
     {
@@ -13,6 +11,6 @@ namespace SS.CMS.Abstractions.Services
 
         void DownloadPackage(string packageId, string version);
 
-        bool UpdatePackage(string idWithVersion, PackageType packageType, out string errorMessage);
+        Task<(bool IsSuccess, string ErrorMessage)> UpdatePackageAsync(string idWithVersion, PackageType packageType);
     }
 }

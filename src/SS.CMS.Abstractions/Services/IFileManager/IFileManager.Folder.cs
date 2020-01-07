@@ -1,22 +1,22 @@
-﻿using System;
-using System.Collections;
-using SS.CMS.Abstractions.Models;
-using SS.CMS.Abstractions.Repositories;
+﻿using System.Collections;
+using System.Threading.Tasks;
+using SS.CMS.Models;
+using SS.CMS.Repositories;
 
-namespace SS.CMS.Abstractions.Services
+namespace SS.CMS.Services
 {
     public partial interface IFileManager
     {
         void ChangeSiteDir(string parentPsPath, string oldPsDir, string newPsDir);
 
-        void DeleteSiteFiles(SiteInfo siteInfo);
+        Task DeleteSiteFilesAsync(Site siteInfo);
 
-        void ImportSiteFiles(SiteInfo siteInfo, string siteTemplatePath, bool isOverride);
+        Task ImportSiteFilesAsync(Site siteInfo, string siteTemplatePath, bool isOverride);
 
-        void ChangeParentSite(ISiteRepository siteRepository, int oldParentSiteId, int newParentSiteId, int siteId, string siteDir);
+        Task ChangeParentSiteAsync(int oldParentSiteId, int newParentSiteId, int siteId, string siteDir);
 
-        void ChangeToHeadquarters(SiteInfo siteInfo, bool isMoveFiles);
+        Task ChangeToRootAsync(Site siteInfo, bool isMoveFiles);
 
-        void ChangeToSubSite(SiteInfo siteInfo, string psDir, ArrayList fileSystemNameArrayList);
+        Task ChangeToSubSiteAsync(Site siteInfo, string psDir, ArrayList fileSystemNameArrayList);
     }
 }

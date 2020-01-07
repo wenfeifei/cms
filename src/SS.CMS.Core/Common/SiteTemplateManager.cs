@@ -1,9 +1,10 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
-using SS.CMS.Abstractions.Models;
-using SS.CMS.Abstractions.Repositories;
-using SS.CMS.Abstractions.Services;
+using System.Threading.Tasks;
 using SS.CMS.Core.Serialization;
+using SS.CMS.Models;
+using SS.CMS.Repositories;
+using SS.CMS.Services;
 using SS.CMS.Utils;
 using SS.CMS.Utils.Enumerations;
 
@@ -104,7 +105,7 @@ namespace SS.CMS.Core.Common
             return list;
         }
 
-        public void ImportSiteTemplateToEmptySite(int siteId, string siteTemplateDir, bool isImportContents, bool isImportTableStyles, string administratorName)
+        public async Task ImportSiteTemplateToEmptySiteAsync(int siteId, string siteTemplateDir, bool isImportContents, bool isImportTableStyles, int userId)
         {
             var siteTemplatePath = _pathManager.GetSiteTemplatesPath(siteTemplateDir);
             if (DirectoryUtils.IsDirectoryExists(siteTemplatePath))
@@ -114,48 +115,50 @@ namespace SS.CMS.Core.Common
                 var configurationFilePath = _pathManager.GetSiteTemplateMetadataPath(siteTemplatePath, DirectoryUtils.SiteTemplates.FileConfiguration);
                 var siteContentDirectoryPath = _pathManager.GetSiteTemplateMetadataPath(siteTemplatePath, DirectoryUtils.SiteTemplates.SiteContent);
 
-                var importObject = new ImportObject(siteId, administratorName);
+                var importObject = new ImportObject();
+                await importObject.LoadAsync(siteId, userId);
 
-                importObject.ImportFiles(siteTemplatePath, true);
+                await importObject.ImportFilesAsync(siteTemplatePath, true);
 
-                importObject.ImportTemplates(templateFilePath, true, administratorName);
+                await importObject.ImportTemplatesAsync(templateFilePath, true, userId);
 
-                importObject.ImportConfiguration(configurationFilePath);
+                await importObject.ImportConfigurationAsync(configurationFilePath);
 
                 var filePathList = ImportObject.GetSiteContentFilePathList(siteContentDirectoryPath);
 
                 foreach (var filePath in filePathList)
                 {
-                    importObject.ImportSiteContent(siteContentDirectoryPath, filePath, isImportContents);
+                    await importObject.ImportSiteContentAsync(siteContentDirectoryPath, filePath, isImportContents);
                 }
 
                 if (isImportTableStyles)
                 {
-                    importObject.ImportTableStyles(tableDirectoryPath);
+                    await importObject.ImportTableStylesAsync(tableDirectoryPath);
                 }
 
-                importObject.RemoveDbCache();
+                await importObject.RemoveDbCacheAsync();
             }
         }
 
-        public void ExportSiteToSiteTemplate(SiteInfo siteInfo, string siteTemplateDir, string adminName)
+        public async Task ExportSiteToSiteTemplateAsync(Site siteInfo, string siteTemplateDir, int userId)
         {
-            var exportObject = new ExportObject(siteInfo.Id, adminName);
+            var exportObject = new ExportObject();
+            await exportObject.LoadAsync(siteInfo.Id, userId);
 
             var siteTemplatePath = _pathManager.GetSiteTemplatesPath(siteTemplateDir);
 
             //导出模板
             var templateFilePath = _pathManager.GetSiteTemplateMetadataPath(siteTemplatePath, DirectoryUtils.SiteTemplates.FileTemplate);
-            exportObject.ExportTemplates(templateFilePath);
+            await exportObject.ExportTemplatesAsync(templateFilePath);
             //导出辅助表及样式
             var tableDirectoryPath = _pathManager.GetSiteTemplateMetadataPath(siteTemplatePath, DirectoryUtils.SiteTemplates.Table);
-            exportObject.ExportTablesAndStyles(tableDirectoryPath);
+            await exportObject.ExportTablesAndStylesAsync(tableDirectoryPath);
             //导出站点属性以及站点属性表单
             var configurationFilePath = _pathManager.GetSiteTemplateMetadataPath(siteTemplatePath, DirectoryUtils.SiteTemplates.FileConfiguration);
-            exportObject.ExportConfiguration(configurationFilePath);
+            await exportObject.ExportConfigurationAsync(configurationFilePath);
             //导出关联字段
             var relatedFieldDirectoryPath = _pathManager.GetSiteTemplateMetadataPath(siteTemplatePath, DirectoryUtils.SiteTemplates.RelatedField);
-            exportObject.ExportRelatedField(relatedFieldDirectoryPath);
+            await exportObject.ExportRelatedFieldAsync(relatedFieldDirectoryPath);
         }
     }
 }

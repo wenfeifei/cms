@@ -3,16 +3,13 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
 using System.Text;
-using SS.CMS.Abstractions;
-using SS.CMS.Abstractions.Enums;
-using SS.CMS.Abstractions.Models;
-using SS.CMS.Abstractions.Repositories;
-using SS.CMS.Abstractions.Services;
-using SS.CMS.Core.Cache;
-using SS.CMS.Core.Models;
+using System.Threading.Tasks;
 using SS.CMS.Core.Models.Attributes;
-using SS.CMS.Core.Models.Enumerations;
-using SS.CMS.Core.Services;
+using SS.CMS.Core.Common.Enums;
+using SS.CMS.Enums;
+using SS.CMS.Models;
+using SS.CMS.Repositories;
+using SS.CMS.Services;
 using SS.CMS.Utils;
 
 namespace SS.CMS.Core.Common
@@ -148,18 +145,18 @@ namespace SS.CMS.Core.Common
             }
         }
 
-        public static List<TableStyleInfo> GetAllTableStyleInfoList(List<TableStyleInfo> tableStyleInfoList)
+        public static List<TableStyle> GetAllTableStyleInfoList(List<TableStyle> tableStyleInfoList)
         {
             var taxis = 1;
-            var list = new List<TableStyleInfo>
+            var list = new List<TableStyle>
             {
-                new TableStyleInfo
+                new TableStyle
                 {
                     AttributeName = ContentAttribute.Id,
                     DisplayName = "内容Id",
                     Taxis = taxis++
                 },
-                new TableStyleInfo
+                new TableStyle
                 {
                     AttributeName = ContentAttribute.Title,
                     DisplayName = "标题",
@@ -173,7 +170,7 @@ namespace SS.CMS.Core.Common
                 {
                     if (!list.Exists(t => t.AttributeName == tableStyleInfo.AttributeName))
                     {
-                        list.Add(new TableStyleInfo
+                        list.Add(new TableStyle
                         {
                             AttributeName = tableStyleInfo.AttributeName,
                             DisplayName = tableStyleInfo.DisplayName,
@@ -184,117 +181,105 @@ namespace SS.CMS.Core.Common
                 }
             }
 
-            list.AddRange(new List<TableStyleInfo>
+            list.AddRange(new List<TableStyle>
             {
-                new TableStyleInfo
+                new TableStyle
                 {
                     AttributeName = ContentAttribute.LinkUrl,
                     DisplayName = "外部链接",
                     Taxis = taxis++
                 },
-                new TableStyleInfo
+                new TableStyle
                 {
                     AttributeName = ContentAttribute.AddDate,
                     DisplayName = "添加时间",
                     Taxis = taxis++
                 },
-                new TableStyleInfo
+                new TableStyle
                 {
-                    AttributeName = ContentAttribute.LastEditDate,
+                    AttributeName = ContentAttribute.LastModifiedDate,
                     DisplayName = "最后修改时间",
                     Taxis = taxis++
                 },
-                new TableStyleInfo
-                {
-                    AttributeName = ContentAttribute.AddUserName,
-                    DisplayName = "添加人",
-                    Taxis = taxis++
-                },
-                new TableStyleInfo
-                {
-                    AttributeName = ContentAttribute.LastEditUserName,
-                    DisplayName = "最后修改人",
-                    Taxis = taxis++
-                },
-                new TableStyleInfo
+                new TableStyle
                 {
                     AttributeName = ContentAttribute.GroupNameCollection,
                     DisplayName = "内容组",
                     Taxis = taxis++
                 },
-                new TableStyleInfo
+                new TableStyle
                 {
                     AttributeName = ContentAttribute.Tags,
                     DisplayName = "标签",
                     Taxis = taxis++
                 },
-                new TableStyleInfo
-                {
-                    AttributeName = ContentAttribute.AdminId,
-                    DisplayName = "管理员",
-                    Taxis = taxis++
-                },
-                new TableStyleInfo
+                new TableStyle
                 {
                     AttributeName = ContentAttribute.UserId,
-                    DisplayName = "投稿用户",
+                    DisplayName = "添加人",
                     Taxis = taxis++
                 },
-                new TableStyleInfo
+                new TableStyle
+                {
+                    AttributeName = ContentAttribute.LastModifiedUserId,
+                    DisplayName = "最后修改人",
+                    Taxis = taxis++
+                },
+                new TableStyle
                 {
                     AttributeName = ContentAttribute.SourceId,
                     DisplayName = "来源标识",
                     Taxis = taxis++
                 },
-                new TableStyleInfo
+                new TableStyle
                 {
                     AttributeName = ContentAttribute.Hits,
                     DisplayName = "点击量",
                     Taxis = taxis++
                 },
-                new TableStyleInfo
+                new TableStyle
                 {
                     AttributeName = ContentAttribute.HitsByDay,
                     DisplayName = "日点击",
                     Taxis = taxis++
                 },
-                new TableStyleInfo
+                new TableStyle
                 {
                     AttributeName = ContentAttribute.HitsByWeek,
                     DisplayName = "周点击",
                     Taxis = taxis++
                 },
-                new TableStyleInfo
+                new TableStyle
                 {
                     AttributeName = ContentAttribute.HitsByMonth,
                     DisplayName = "月点击",
                     Taxis = taxis++
                 },
-                new TableStyleInfo
+                new TableStyle
                 {
                     AttributeName = ContentAttribute.LastHitsDate,
                     DisplayName = "最后点击时间",
                     Taxis = taxis++
                 },
-                new TableStyleInfo
+                new TableStyle
                 {
                     AttributeName = ContentAttribute.Downloads,
                     DisplayName = "下载量",
                     Taxis = taxis++
                 },
-                new TableStyleInfo
+                new TableStyle
                 {
-                    AttributeName = ContentAttribute.CheckUserName,
+                    AttributeName = ContentAttribute.CheckUserId,
                     DisplayName = "审核人",
                     Taxis = taxis++
                 },
-                new TableStyleInfo
+                new TableStyle
                 {
                     AttributeName = ContentAttribute.CheckDate,
                     DisplayName = "审核时间",
                     Taxis = taxis++
                 },
-                new TableStyleInfo
+                new TableStyle
                 {
                     AttributeName = ContentAttribute.CheckReasons,
                     DisplayName = "审核原因",
@@ -305,35 +290,35 @@ namespace SS.CMS.Core.Common
             return list.OrderBy(styleInfo => styleInfo.Taxis == 0 ? int.MaxValue : styleInfo.Taxis).ToList();
         }
 
-        public static List<TableStyleInfo> GetEditableTableStyleInfoList(List<TableStyleInfo> tableStyleInfoList)
+        public static List<TableStyle> GetEditableTableStyleInfoList(List<TableStyle> tableStyleInfoList)
         {
-            var list = new List<TableStyleInfo>
+            var list = new List<TableStyle>
             {
-                new TableStyleInfo
+                new TableStyle
                 {
                     AttributeName = ContentAttribute.Title,
                     Type = InputType.Text,
                     DisplayName = "标题"
                 },
-                new TableStyleInfo
+                new TableStyle
                 {
                     AttributeName = ContentAttribute.LinkUrl,
                     Type = InputType.Text,
                     DisplayName = "外部链接"
                 },
-                new TableStyleInfo
+                new TableStyle
                 {
                     AttributeName = ContentAttribute.AddDate,
                     Type = InputType.DateTime,
                     DisplayName = "添加时间"
                 },
-                new TableStyleInfo
+                new TableStyle
                 {
                     AttributeName = ContentAttribute.GroupNameCollection,
                     Type = InputType.CheckBox,
                     DisplayName = "内容组"
                 },
-                new TableStyleInfo
+                new TableStyle
                 {
                     AttributeName = ContentAttribute.Tags,
                     Type = InputType.CheckBox,
@@ -349,7 +334,7 @@ namespace SS.CMS.Core.Common
             return list;
         }
 
-        public static bool AfterContentAdded(CrossSiteTransManager crossSiteTransManager, IPluginManager pluginManager, ISiteRepository siteRepository, SiteInfo siteInfo, ChannelInfo channelInfo, int contentId, bool isCrossSiteTrans, bool isAutomatic)
+        public static async Task<bool> AfterContentAddedAsync(CrossSiteTransManager crossSiteTransManager, IPluginManager pluginManager, ISiteRepository siteRepository, IErrorLogRepository errorLogRepository, Site siteInfo, Channel channelInfo, int contentId, bool isCrossSiteTrans, bool isAutomatic)
         {
             var isTranslated = false;
             if (isCrossSiteTrans && isAutomatic)
@@ -367,12 +352,12 @@ namespace SS.CMS.Core.Common
                 }
                 else if (transType == ECrossSiteTransType.ParentSite)
                 {
-                    targetSiteId = siteRepository.GetParentSiteId(siteInfo.Id);
+                    targetSiteId = await siteRepository.GetParentSiteIdAsync(siteInfo.Id);
                 }
 
                 if (targetSiteId > 0)
                 {
-                    var targetSiteInfo = siteRepository.GetSiteInfo(targetSiteId);
+                    var targetSiteInfo = await siteRepository.GetSiteAsync(targetSiteId);
                     if (targetSiteInfo != null)
                     {
                         var targetChannelIdArrayList = TranslateUtils.StringCollectionToIntList(channelInfo.TransChannelIds);
@@ -380,7 +365,7 @@ namespace SS.CMS.Core.Common
                         {
                             foreach (var targetChannelId in targetChannelIdArrayList)
                             {
-                                crossSiteTransManager.TransContentInfo(siteInfo, channelInfo, contentId, targetSiteInfo, targetChannelId);
+                                await crossSiteTransManager.TransContentInfoAsync(siteInfo, channelInfo, contentId, targetSiteInfo, targetChannelId);
                                 isTranslated = true;
                             }
                         }
@@ -388,7 +373,7 @@ namespace SS.CMS.Core.Common
                 }
             }
 
-            foreach (var service in pluginManager.Services)
+            foreach (var service in await pluginManager.GetServicesAsync())
             {
                 try
                 {
@@ -396,7 +381,7 @@ namespace SS.CMS.Core.Common
                 }
                 catch (Exception ex)
                 {
-                    LogUtils.AddErrorLog(service.PluginId, ex, nameof(service.OnContentAddCompleted));
+                    await errorLogRepository.AddErrorLogAsync(service.PluginId, ex, nameof(service.OnContentAddCompleted));
                 }
             }
 
@@ -411,7 +396,7 @@ namespace SS.CMS.Core.Common
             {
                 foreach (var ids in TranslateUtils.StringCollectionToStringList(queryString["IDsCollection"]))
                 {
-                    var channelId = TranslateUtils.ToIntWithNagetive(ids.Split('_')[0]);
+                    var channelId = TranslateUtils.ToIntWithNegative(ids.Split('_')[0]);
                     var contentId = TranslateUtils.ToInt(ids.Split('_')[1]);
                     var contentIdList = new List<int>();
                     if (dic.ContainsKey(channelId))

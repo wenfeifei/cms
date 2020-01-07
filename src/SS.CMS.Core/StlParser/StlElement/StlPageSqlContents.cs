@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Text;
+using System.Threading.Tasks;
 using SS.CMS.Core.Api.Sys.Stl;
-using SS.CMS.Core.Cache.Stl;
-using SS.CMS.Core.Common;
+using SS.CMS.Core.Services;
 using SS.CMS.Core.StlParser.Models;
 using SS.CMS.Core.StlParser.Utility;
 
@@ -19,48 +19,39 @@ namespace SS.CMS.Core.StlParser.StlElement
         [StlAttribute(Title = "翻页中生成的静态页面最大数，剩余页面将动态获取")]
         public const string MaxPage = nameof(MaxPage);
 
-        private readonly string _stlPageSqlContentsElement;
-        private readonly ParseContext _parseContext;
-        private readonly ListInfo _listInfo;
-        private readonly string _sqlString;
+        private string _stlPageSqlContentsElement;
+        private ParseContext _parseContext;
+        private ListInfo _listInfo;
+        private string _sqlString;
         //private readonly DataSet _dataSet;
 
-        public StlPageSqlContents(string stlPageSqlContentsElement, ParseContext parseContext)
+        public async Task LoadAsync(string stlPageSqlContentsElement, ParseContext parseContext)
         {
             _stlPageSqlContentsElement = stlPageSqlContentsElement;
-            try
+
+            var stlElementInfo = StlParserUtility.ParseStlElement(stlPageSqlContentsElement);
+
+            _parseContext = parseContext.Clone(stlPageSqlContentsElement, stlElementInfo.InnerHtml, stlElementInfo.Attributes);
+            _parseContext.ContextType = EContextType.SqlContent;
+
+            _listInfo = await ListInfo.GetListInfoAsync(_parseContext);
+
+            _sqlString = _listInfo.QueryString;
+            if (string.IsNullOrWhiteSpace(_listInfo.Order))
             {
-                var stlElementInfo = StlParserUtility.ParseStlElement(stlPageSqlContentsElement);
-
-                _parseContext = parseContext.Clone(stlPageSqlContentsElement, stlElementInfo.InnerHtml, stlElementInfo.Attributes);
-                _parseContext.ContextType = EContextType.SqlContent;
-
-                _listInfo = ListInfo.GetListInfo(_parseContext);
-
-                _sqlString = _listInfo.QueryString;
-                if (string.IsNullOrWhiteSpace(_listInfo.Order))
+                var pos = _sqlString.LastIndexOf(" ORDER BY ", StringComparison.OrdinalIgnoreCase);
+                if (pos > -1)
                 {
-                    var pos = _sqlString.LastIndexOf(" ORDER BY ", StringComparison.OrdinalIgnoreCase);
-                    if (pos > -1)
-                    {
-                        _sqlString = _sqlString.Substring(0, pos);
-                        _listInfo.Order = _sqlString.Substring(pos);
-                    }
+                    _sqlString = _sqlString.Substring(0, pos);
+                    _listInfo.Order = _sqlString.Substring(pos);
                 }
-                else
-                {
-                    if (_listInfo.Order.IndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase) == -1)
-                    {
-                        _listInfo.Order = $"ORDER BY {_listInfo.Order}";
-                    }
-                }
-
-                //_dataSet = StlDataUtility.GetPageSqlContentsDataSet(_listInfo.ConnectionString, _listInfo.QueryString, _listInfo.StartNum, _listInfo.PageNum, _listInfo.Order);
             }
-            catch (Exception ex)
+            else
             {
-                LogUtils.AddStlErrorLog(_parseContext.PageInfo, ElementName, stlPageSqlContentsElement, ex);
-                _listInfo = new ListInfo();
+                if (_listInfo.Order.IndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase) == -1)
+                {
+                    _listInfo.Order = $"ORDER BY {_listInfo.Order}";
+                }
             }
         }
 
@@ -71,7 +62,7 @@ namespace SS.CMS.Core.StlParser.StlElement
             try
             {
                 //totalNum = DatabaseApi.Instance.GetPageTotalCount(SqlString);
-                totalNum = StlDatabaseCache.GetPageTotalCount(_sqlString);
+                totalNum = CacheManager.GetPageTotalCount(_sqlString);
                 if (_listInfo.PageNum != 0 && _listInfo.PageNum < totalNum)//需要翻页
                 {
                     pageCount = Convert.ToInt32(Math.Ceiling(Convert.ToDouble(totalNum) / Convert.ToDouble(_listInfo.PageNum)));//需要生成的总页数
@@ -98,7 +89,7 @@ namespace SS.CMS.Core.StlParser.StlElement
         //    return pageCount;
         //}
 
-        public string Parse(int totalNum, int currentPageIndex, int pageCount, bool isStatic)
+        public async Task<string> ParseAsync(int totalNum, int currentPageIndex, int pageCount, bool isStatic)
         {
             if (isStatic)
             {
@@ -122,11 +113,11 @@ namespace SS.CMS.Core.StlParser.StlElement
                 if (!string.IsNullOrEmpty(_sqlString))
                 {
                     //var pageSqlString = DatabaseApi.Instance.GetPageSqlString(SqlString, ListInfo.OrderByString, totalNum, ListInfo.PageNum, currentPageIndex);
-                    var pageSqlString = StlDatabaseCache.GetStlPageSqlString(_sqlString, _listInfo.Order, totalNum, _listInfo.PageNum, currentPageIndex);
+                    var pageSqlString = CacheManager.GetStlPageSqlString(_sqlString, _listInfo.Order, totalNum, _listInfo.PageNum, currentPageIndex);
 
-                    var sqlList = StlDataUtility.GetPageContainerSqlList(_parseContext.SettingsManager, _listInfo.ConnectionString, pageSqlString);
+                    var sqlList = _parseContext.GetPageContainerSqlList(_listInfo.ConnectionString, pageSqlString);
 
-                    return StlSqlContents.ParseElement(_parseContext, _listInfo, sqlList);
+                    return await StlSqlContents.ParseElementAsync(_parseContext, _listInfo, sqlList);
 
                     // var dataSource = DatabaseUtils.GetDataSource(pageSqlString);
 
@@ -285,7 +276,7 @@ namespace SS.CMS.Core.StlParser.StlElement
             }
             catch (Exception ex)
             {
-                parsedContent = LogUtils.AddStlErrorLog(_parseContext.PageInfo, ElementName, _stlPageSqlContentsElement, ex);
+                parsedContent = await _parseContext.GetErrorMessageAsync(ElementName, _stlPageSqlContentsElement, ex);
             }
 
             //还原翻页为0，使得其他列表能够正确解析ItemIndex
@@ -312,7 +303,7 @@ namespace SS.CMS.Core.StlParser.StlElement
             _parseContext.PageInfo.AddPageBodyCodeIfNotExists(_parseContext.UrlManager, PageInfo.Const.Jquery);
 
             var ajaxDivId = StlParserUtility.GetAjaxDivId(_parseContext.UniqueId);
-            var apiUrl = ApiRouteActionsPageContents.GetUrl(_parseContext.ApiUrl);
+            var apiUrl = ApiRouteActionsPageContents.GetUrl();
             var apiParameters = ApiRouteActionsPageContents.GetParameters(_parseContext.SettingsManager, _parseContext.SiteId, _parseContext.PageChannelId, _parseContext.TemplateInfo.Id, totalNum, pageCount, currentPageIndex, _stlPageSqlContentsElement);
 
             var builder = new StringBuilder();
