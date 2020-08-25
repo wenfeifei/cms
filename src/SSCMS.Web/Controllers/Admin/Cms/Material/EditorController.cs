@@ -2,16 +2,16 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NSwag.Annotations;
+using SSCMS.Configuration;
 using SSCMS.Dto;
 using SSCMS.Models;
 using SSCMS.Repositories;
 using SSCMS.Services;
-using SSCMS.Utils;
 
 namespace SSCMS.Web.Controllers.Admin.Cms.Material
 {
     [OpenApiIgnore]
-    [Authorize(Roles = AuthTypes.Roles.Administrator)]
+    [Authorize(Roles = Types.Roles.Administrator)]
     [Route(Constants.ApiAdminPrefix)]
     public partial class EditorController : ControllerBase
     {
@@ -19,15 +19,13 @@ namespace SSCMS.Web.Controllers.Admin.Cms.Material
         private const string RouteActionsPreview = "cms/material/editor/actions/preview";
 
         private readonly IAuthManager _authManager;
-        private readonly IWxManager _openManager;
-        private readonly IWxAccountRepository _openAccountRepository;
+        private readonly IWxManager _wxManager;
         private readonly IMaterialMessageRepository _materialMessageRepository;
 
-        public EditorController(IAuthManager authManager, IWxManager openManager, IWxAccountRepository openAccountRepository, IMaterialMessageRepository materialMessageRepository)
+        public EditorController(IAuthManager authManager, IWxManager wxManager, IMaterialMessageRepository materialMessageRepository)
         {
             _authManager = authManager;
-            _openManager = openManager;
-            _openAccountRepository = openAccountRepository;
+            _wxManager = wxManager;
             _materialMessageRepository = materialMessageRepository;
         }
 
@@ -65,7 +63,7 @@ namespace SSCMS.Web.Controllers.Admin.Cms.Material
 
         public class PreviewRequest : SiteRequest
         {
-            public int MessageId { get; set; }
+            public int MaterialId { get; set; }
 
             public string WxNames { get; set; }
         }

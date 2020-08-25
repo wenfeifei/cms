@@ -1,6 +1,8 @@
 ﻿using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using SSCMS.Configuration;
 using SSCMS.Enums;
+using SSCMS.Extensions;
 using SSCMS.Utils;
 
 namespace SSCMS.Web.Controllers.Admin.Cms.Material
@@ -11,19 +13,22 @@ namespace SSCMS.Web.Controllers.Admin.Cms.Material
         public async Task<ActionResult<PreviewResult>> Preview([FromBody] PreviewRequest request)
         {
             if (!await _authManager.HasSitePermissionsAsync(request.SiteId,
-                AuthTypes.SitePermissions.MaterialMessage))
+                Types.SitePermissions.MaterialMessage))
             {
                 return Unauthorized();
             }
 
-            var (success, token, errorMessage) = await _openManager.GetAccessTokenAsync(request.SiteId);
+            var (success, token, errorMessage) = await _wxManager.GetAccessTokenAsync(request.SiteId);
             if (success)
             {
-                var mediaId = await _openManager.PushMaterialAsync(token, MaterialType.Message, request.MessageId);
-
                 foreach (var wxName in ListUtils.GetStringList(request.WxNames, Constants.Newline))
                 {
-                    await _openManager.SendPreviewAsync(token, MaterialType.Message, mediaId, wxName);
+                    var mediaId = await _wxManager.PushMaterialAsync(token, MaterialType.Message, request.MaterialId);
+                    if (string.IsNullOrEmpty(mediaId))
+                    {
+                        return this.Error("操作失败，素材未能上传");
+                    }
+                    await _wxManager.PreviewSendAsync(token, MaterialType.Message, mediaId, wxName);
                 }
             }
 

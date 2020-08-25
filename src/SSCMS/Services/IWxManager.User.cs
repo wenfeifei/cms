@@ -7,12 +7,28 @@ namespace SSCMS.Services
 {
     public partial interface IWxManager
     {
-        Task<List<WxUserTag>> GetUserTagsAsync(string token);
+        Task AddUserTag(string accessTokenOrAppId, string tagName);
 
-        Task<List<string>> GetUserOpenIdsAsync(string token);
+        Task UpdateUserTag(string accessTokenOrAppId, int tagId, string tagName);
 
-        Task<List<WxUser>> GetUsersAsync(string token, List<string> openIds);
+        Task DeleteUserTag(string accessTokenOrAppId, int tagId);
 
-        Task<WxUser> GetUserAsync(string token, string openId);
+        Task UpdateUserRemarkAsync(string accessTokenOrAppId, string openId, string remark);
+
+        Task UserBatchTaggingAsync(string accessTokenOrAppId, int tagId, List<string> openIds);
+
+        Task UserBatchUnTaggingAsync(string accessTokenOrAppId, int tagId, List<string> openIds);
+
+        Task UserBatchBlackListAsync(string accessTokenOrAppId, List<string> openIds);
+
+        Task UserBatchUnBlackListAsync(string accessTokenOrAppId, List<string> openIds);
+
+        Task<List<WxUserTag>> GetUserTagsAsync(string accessTokenOrAppId);
+
+        Task<List<string>> GetUserOpenIdsAsync(string accessTokenOrAppId, bool isBlock);
+
+        Task<List<WxUser>> GetUsersAsync(string accessTokenOrAppId, List<string> openIds);
+
+        Task<WxUser> GetUserAsync(string accessTokenOrAppId, string openId);
     }
 }

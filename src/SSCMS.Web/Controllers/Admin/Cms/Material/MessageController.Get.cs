@@ -1,5 +1,6 @@
 ﻿using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using SSCMS.Configuration;
 using SSCMS.Enums;
 
 namespace SSCMS.Web.Controllers.Admin.Cms.Material
@@ -10,17 +11,12 @@ namespace SSCMS.Web.Controllers.Admin.Cms.Material
         public async Task<ActionResult<QueryResult>> Get([FromQuery] QueryRequest request)
         {
             if (!await _authManager.HasSitePermissionsAsync(request.SiteId,
-                AuthTypes.SitePermissions.MaterialMessage))
+                Types.SitePermissions.MaterialMessage))
             {
                 return Unauthorized();
             }
 
-            var isOpen = false;
-            var account = await _openAccountRepository.GetBySiteIdAsync(request.SiteId);
-            if (account.MpConnected)
-            {
-                isOpen = true;
-            }
+            var site = await _siteRepository.GetAsync(request.SiteId);
 
             var groups = await _materialGroupRepository.GetAllAsync(MaterialType.Article);
             var count = await _materialMessageRepository.GetCountAsync(request.GroupId, request.Keyword);
@@ -31,7 +27,7 @@ namespace SSCMS.Web.Controllers.Admin.Cms.Material
                 Groups = groups,
                 Count = count,
                 Messages = messages,
-                IsOpen = isOpen
+                SiteType = site.SiteType
             };
         }
     }

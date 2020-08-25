@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using SSCMS.Configuration;
 using SSCMS.Dto;
 using SSCMS.Enums;
 using SSCMS.Extensions;
@@ -13,7 +14,7 @@ namespace SSCMS.Web.Controllers.Admin.Wx
         public async Task<ActionResult<BoolResult>> Submit([FromBody] SubmitRequest request)
         {
             if (!await _authManager.HasSitePermissionsAsync(request.SiteId,
-                AuthTypes.SitePermissions.WxSend))
+                Types.SitePermissions.WxSend))
             {
                 return Unauthorized();
             }
@@ -37,13 +38,17 @@ namespace SSCMS.Web.Controllers.Admin.Wx
 
             if (request.MaterialType == MaterialType.Text)
             {
-                await _wxManager.SendAsync(token, request.MaterialType, request.Text, request.IsToAll,
+                await _wxManager.MassSendAsync(token, request.MaterialType, request.Text, request.IsToAll,
                     request.TagId.ToString(), runOnceAt);
             }
             else
             {
                 var mediaId = await _wxManager.PushMaterialAsync(token, request.MaterialType, request.MaterialId);
-                await _wxManager.SendAsync(token, request.MaterialType, mediaId, request.IsToAll,
+                if (string.IsNullOrEmpty(mediaId))
+                {
+                    return this.Error("操作失败，素材未能上传");
+                }
+                await _wxManager.MassSendAsync(token, request.MaterialType, mediaId, request.IsToAll,
                     request.TagId.ToString(), runOnceAt);
             }
 

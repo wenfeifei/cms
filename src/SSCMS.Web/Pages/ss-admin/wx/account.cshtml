@@ -20,30 +20,26 @@
       </el-form-item>
     </el-form>
 
-    <div v-if="account.mpConnected">
-      
-      <div style="height: 10px"></div>
-      <el-alert type="info">
-        请进入微信公众平台，进入<strong>开发 -> 基本配置 -> 服务器配置</strong>，将以下信息填入并启用。
-      </el-alert>
-      <div style="height: 10px"></div>
-  
-      <el-form size="small" label-width="260px" status-icon>
-        <el-form-item label="服务器地址(URL)">
-          {{account.mpUrl}}
-        </el-form-item>
-        <el-form-item label="令牌(Token)">
-          {{account.mpToken}}
-        </el-form-item>
-        <el-form-item label="消息加解密方式">
-          安全模式
-        </el-form-item>
-        <el-form-item label="消息加解密密钥(EncodingAESKey)">
-          {{account.mpEncodingAESKey}}
-        </el-form-item>
-      </el-form>
-  
-    </div>
+    <div style="height: 10px"></div>
+    <el-alert type="info">
+      请进入微信公众平台，进入<strong>开发 -> 基本配置 -> 服务器配置</strong>，将以下信息填入并启用。
+    </el-alert>
+    <div style="height: 10px"></div>
+
+    <el-form size="small" label-width="260px" status-icon>
+      <el-form-item label="服务器地址(URL)">
+        {{mpUrl}}
+      </el-form-item>
+      <el-form-item label="令牌(Token)">
+        {{account.mpToken}}
+      </el-form-item>
+      <el-form-item label="消息加解密密钥(EncodingAESKey)">
+        {{account.mpEncodingAESKey}}
+      </el-form-item>
+      <el-form-item label="消息加解密方式">
+        安全模式（推荐）
+      </el-form-item>
+    </el-form>
 
     <el-divider></el-divider>
     <div style="height: 10px"></div>
@@ -55,7 +51,7 @@
     </el-row>
   </el-tab-pane>
   
-  <el-tab-pane label="微信支付设置">
+  <!-- <el-tab-pane label="微信支付设置">
 
     <el-alert v-if="tenPayForm.tenPayConnected" type="success" title="微信支付连接成功，服务器配置已启用"></el-alert>
     <el-alert v-else type="warning" title="微信支付未连接，请设置后进入微信支付中启用" ></el-alert>
@@ -103,7 +99,7 @@
         <el-button type="primary" v-on:click="btnTenPaySubmitClick" size="small">保 存</el-button>
       </el-col>
     </el-row>
-  </el-tab-pane>
+  </el-tab-pane> -->
 </el-tabs>
 
 @section Scripts{

@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using Senparc.Weixin;
 using Senparc.Weixin.MP.AdvancedAPIs;
 using Senparc.Weixin.MP.AdvancedAPIs.User;
-using SSCMS.Core.Utils;
 using SSCMS.Models;
 using SSCMS.Utils;
 using SSCMS.Wx;
@@ -14,9 +13,49 @@ namespace SSCMS.Core.Services
 {
     public partial class WxManager
     {
-        public async Task<List<WxUserTag>> GetUserTagsAsync(string token)
+        public async Task AddUserTag(string accessTokenOrAppId, string tagName)
         {
-            return (await UserTagApi.GetAsync(token)).tags.Select(tag =>
+            await UserTagApi.CreateAsync(accessTokenOrAppId, tagName);
+        }
+
+        public async Task UpdateUserTag(string accessTokenOrAppId, int tagId, string tagName)
+        {
+            await UserTagApi.UpdateAsync(accessTokenOrAppId, tagId, tagName);
+        }
+
+        public async Task DeleteUserTag(string accessTokenOrAppId, int tagId)
+        {
+            await UserTagApi.DeleteAsync(accessTokenOrAppId, tagId);
+        }
+
+        public async Task UpdateUserRemarkAsync(string accessTokenOrAppId, string openId, string remark)
+        {
+            await UserApi.UpdateRemarkAsync(accessTokenOrAppId, openId, remark);
+        }
+
+        public async Task UserBatchTaggingAsync(string accessTokenOrAppId, int tagId, List<string> openIds)
+        {
+            await UserTagApi.BatchTaggingAsync(accessTokenOrAppId, tagId, openIds);
+        }
+
+        public async Task UserBatchUnTaggingAsync(string accessTokenOrAppId, int tagId, List<string> openIds)
+        {
+            await UserTagApi.BatchUntaggingAsync(accessTokenOrAppId, tagId, openIds);
+        }
+
+        public async Task UserBatchBlackListAsync(string accessTokenOrAppId, List<string> openIds)
+        {
+            await UserApi.BatchBlackListAsync(accessTokenOrAppId, openIds);
+        }
+
+        public async Task UserBatchUnBlackListAsync(string accessTokenOrAppId, List<string> openIds)
+        {
+            await UserApi.BatchUnBlackListAsync(accessTokenOrAppId, openIds);
+        }
+
+        public async Task<List<WxUserTag>> GetUserTagsAsync(string accessTokenOrAppId)
+        {
+            return (await UserTagApi.GetAsync(accessTokenOrAppId)).tags.Select(tag =>
                 new WxUserTag
                 {
                     Id = tag.id,
@@ -25,69 +64,61 @@ namespace SSCMS.Core.Services
                 }).ToList();
         }
 
-        public async Task<List<string>> GetUserOpenIdsAsync(string token)
+        public async Task<List<string>> GetUserOpenIdsAsync(string accessTokenOrAppId, bool isBlock)
         {
-            var cacheKey = CacheUtils.GetClassKey(typeof(WxManager), token);
-            var openIds = _openIdCacheManager.Get(cacheKey);
-            if (openIds == null)
+            var openIds = new List<string>();
+            string nextOpenId = null;
+            while (true)
             {
-                openIds = new List<string>();
-                string nextOpenId = null;
-                while (true)
-                {
-                    nextOpenId = await LoadUserOpenIdsAsync(openIds, token, nextOpenId);
-                    if (string.IsNullOrEmpty(nextOpenId)) break;
-                }
-
-                _openIdCacheManager.AddOrUpdateAbsolute(cacheKey, openIds, 30);
+                nextOpenId = await LoadUserOpenIdsAsync(accessTokenOrAppId, openIds, nextOpenId, isBlock);
+                if (string.IsNullOrEmpty(nextOpenId)) break;
             }
 
             return openIds;
         }
 
-        public async Task<List<WxUser>> GetUsersAsync(string token, List<string> openIds)
+        public async Task<List<WxUser>> GetUsersAsync(string accessTokenOrAppId, List<string> openIds)
         {
-            var cacheKey = CacheUtils.GetClassKey(typeof(WxManager), ListUtils.ToString(openIds));
-            var users = _userCacheManager.Get(cacheKey);
-            if (users == null)
+            var users = new List<WxUser>();
+            var num = TranslateUtils.Ceiling(openIds.Count, 100);
+            for (var i = 0; i < num; i++)
             {
-                users = new List<WxUser>();
-                var num = TranslateUtils.Ceiling(openIds.Count, 100);
-                for (var i = 0; i < num; i++)
-                {
-                    var pageOpenIds = openIds.Skip(i * 100).Take(100);
+                var pageOpenIds = openIds.Skip(i * 100).Take(100);
 
-                    var userList = pageOpenIds.Select(openId => new BatchGetUserInfoData
-                        {
-                            openid = openId,
-                            LangEnum = Language.zh_CN
-                        })
-                        .ToList();
-                    var userResult = await UserApi.BatchGetUserInfoAsync(token, userList);
-                    users.AddRange(userResult.user_info_list.Select(GetWxUser));
-                }
-
-                users = users.OrderByDescending(x => x.SubscribeTime).ToList();
-
-                _userCacheManager.AddOrUpdateAbsolute(cacheKey, users, 30);
+                var userList = pageOpenIds.Select(openId => new BatchGetUserInfoData
+                    {
+                        openid = openId,
+                        LangEnum = Language.zh_CN
+                    })
+                    .ToList();
+                var userResult = await UserApi.BatchGetUserInfoAsync(accessTokenOrAppId, userList);
+                users.AddRange(userResult.user_info_list.Select(GetWxUser));
             }
+
+            users = users.OrderByDescending(x => x.SubscribeTime).ToList();
 
             return users;
         }
 
-        public async Task<WxUser> GetUserAsync(string token, string openId)
+        public async Task<WxUser> GetUserAsync(string accessTokenOrAppId, string openId)
         {
             if (string.IsNullOrEmpty(openId)) return null;
 
-            var userResult = await UserApi.InfoAsync(token, openId);
+            var userResult = await UserApi.InfoAsync(accessTokenOrAppId, openId);
 
             return GetWxUser(userResult);
         }
 
-        private async Task<string> LoadUserOpenIdsAsync(List<string> openIds, string token, string nextOpenId)
+        private async Task<string> LoadUserOpenIdsAsync(string accessTokenOrAppId, List<string> openIds, string nextOpenId, bool isBlock)
         {
-            var openIdResult = await UserApi.GetAsync(token, nextOpenId);
-            openIds.AddRange(openIdResult.data.openid);
+            var openIdResult = isBlock
+                ? await UserApi.GetBlackListAsync(accessTokenOrAppId, nextOpenId)
+                : await UserApi.GetAsync(accessTokenOrAppId, nextOpenId);
+
+            if (openIdResult.data != null)
+            {
+                openIds.AddRange(openIdResult.data.openid);
+            }
 
             return openIds.Count != openIdResult.total ? openIdResult.next_openid : null;
         }
