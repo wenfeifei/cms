@@ -3,13 +3,13 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using SSCMS.Configuration;
 using SSCMS.Core.Plugins;
-using SSCMS.Extensions;
 using SSCMS.Utils;
 
 namespace SSCMS.Web.Controllers.Admin.Plugins
 {
     public partial class AddLayerUploadController
     {
+        [RequestSizeLimit(long.MaxValue)]
         [HttpPost, Route(RouteActionsUpload)]
         public async Task<ActionResult<UploadResult>> Upload([FromForm] IFormFile file)
         {

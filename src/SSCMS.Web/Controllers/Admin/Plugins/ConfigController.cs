@@ -20,6 +20,7 @@ namespace SSCMS.Web.Controllers.Admin.Plugins
         private const string Route = "plugins/config";
         private const string RouteActionsGetChannels = "plugins/config/actions/getChannels";
         private const string RouteActionsSubmitChannels = "plugins/config/actions/submitChannels";
+        private const string RouteActionsRestart = "plugins/config/actions/restart";
 
         private readonly IHostApplicationLifetime _hostApplicationLifetime;
         private readonly IAuthManager _authManager;
@@ -63,7 +64,7 @@ namespace SSCMS.Web.Controllers.Admin.Plugins
         {
             public string PluginId { get; set; }
             public int SiteId { get; set; }
-            public bool IsAllChannels { get; set; }
+            public bool AllChannels { get; set; }
             public List<int> ChannelIds { get; set; }
         }
 
@@ -71,7 +72,7 @@ namespace SSCMS.Web.Controllers.Admin.Plugins
         {
             public string PluginId { get; set; }
             public int Taxis { get; set; }
-            public bool IsAllSites { get; set; }
+            public bool AllSites { get; set; }
             public List<int> SiteIds { get; set; }
         }
     }

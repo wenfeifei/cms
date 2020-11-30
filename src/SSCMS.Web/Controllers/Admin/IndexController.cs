@@ -6,9 +6,11 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using NSwag.Annotations;
 using SSCMS.Configuration;
+using SSCMS.Core.Utils;
 using SSCMS.Dto;
 using SSCMS.Repositories;
 using SSCMS.Services;
+using SSCMS.Utils;
 
 namespace SSCMS.Web.Controllers.Admin
 {
@@ -22,7 +24,7 @@ namespace SSCMS.Web.Controllers.Admin
         private const string RouteActionsSetLanguage = "index/actions/setLanguage";
         private const string RouteActionsCache = "index/actions/cache";
 
-        private readonly IStringLocalizer<IndexController> _local;
+        //private readonly IStringLocalizer<IndexController> _local;
         private readonly ISettingsManager _settingsManager;
         private readonly IAuthManager _authManager;
         private readonly IPathManager _pathManager;
@@ -34,9 +36,8 @@ namespace SSCMS.Web.Controllers.Admin
         private readonly IContentRepository _contentRepository;
         private readonly IDbCacheRepository _dbCacheRepository;
 
-        public IndexController(IStringLocalizer<IndexController> local, ISettingsManager settingsManager, IAuthManager authManager, IPathManager pathManager, IPluginManager pluginManager, IConfigRepository configRepository, IAdministratorRepository administratorRepository, ISiteRepository siteRepository, IChannelRepository channelRepository, IContentRepository contentRepository, IDbCacheRepository dbCacheRepository)
+        public IndexController(ISettingsManager settingsManager, IAuthManager authManager, IPathManager pathManager, IPluginManager pluginManager, IConfigRepository configRepository, IAdministratorRepository administratorRepository, ISiteRepository siteRepository, IChannelRepository channelRepository, IContentRepository contentRepository, IDbCacheRepository dbCacheRepository)
         {
-            _local = local;
             _settingsManager = settingsManager;
             _authManager = authManager;
             _pathManager = pathManager;
@@ -73,7 +74,6 @@ namespace SSCMS.Web.Controllers.Admin
         {
             public bool Value { get; set; }
             public string RedirectUrl { get; set; }
-            public bool IsNightly { get; set; }
             public string Version { get; set; }
             public string OSArchitecture { get; set; }
             public string AdminLogoUrl { get; set; }
@@ -295,5 +295,9 @@ namespace SSCMS.Web.Controllers.Admin
 
             return (redirect, redirectUrl);
         }
+
+        
+
+        
     }
 }

@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Mvc;
 using NSwag.Annotations;
 using SSCMS.Configuration;
 using SSCMS.Dto;
-using SSCMS.Extensions;
 using SSCMS.Models;
 using SSCMS.Repositories;
 using SSCMS.Services;
@@ -132,6 +131,7 @@ namespace SSCMS.Web.Controllers.Admin.Cms.Templates
             };
         }
 
+        [RequestSizeLimit(long.MaxValue)]
         [HttpPost, Route(RouteUpload)]
         public async Task<ActionResult<StringResult>> SpecialUpload([FromQuery] UploadRequest request, [FromForm] IFormFile file)
         {

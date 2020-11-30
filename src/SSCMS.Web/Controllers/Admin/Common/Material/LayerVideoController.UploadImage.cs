@@ -5,13 +5,13 @@ using Microsoft.AspNetCore.Mvc;
 using SSCMS.Configuration;
 using SSCMS.Dto;
 using SSCMS.Enums;
-using SSCMS.Extensions;
 using SSCMS.Utils;
 
 namespace SSCMS.Web.Controllers.Admin.Common.Material
 {
     public partial class LayerVideoController
     {
+        [RequestSizeLimit(long.MaxValue)]
         [HttpPost, Route(RouteUploadImage)]
         public async Task<ActionResult<UploadResult>> UploadImage([FromQuery] SiteRequest request, [FromForm] IFormFile file)
         {
@@ -39,6 +39,7 @@ namespace SSCMS.Web.Controllers.Admin.Common.Material
             var filePath = PathUtils.Combine(localDirectoryPath, _pathManager.GetUploadFileName(site, fileName));
 
             await _pathManager.UploadAsync(file, filePath);
+            await _pathManager.AddWaterMarkAsync(site, filePath);
 
             var imageUrl = await _pathManager.GetSiteUrlByPhysicalPathAsync(site, filePath, true);
 

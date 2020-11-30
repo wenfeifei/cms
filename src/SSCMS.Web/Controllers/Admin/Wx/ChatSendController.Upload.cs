@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using SSCMS.Configuration;
 using SSCMS.Enums;
-using SSCMS.Extensions;
 using SSCMS.Models;
 using SSCMS.Utils;
 
@@ -12,6 +11,7 @@ namespace SSCMS.Web.Controllers.Admin.Wx
 {
     public partial class ChatSendController
     {
+        [RequestSizeLimit(long.MaxValue)]
         [HttpPost, Route(RouteActionsUpload)]
         public async Task<ActionResult<UploadResult>> Upload([FromQuery] UploadRequest request, [FromForm] IFormFile file)
         {
@@ -47,6 +47,7 @@ namespace SSCMS.Web.Controllers.Admin.Wx
                 var filePath = PathUtils.Combine(directoryPath, materialFileName);
 
                 await _pathManager.UploadAsync(file, filePath);
+                await _pathManager.AddWaterMarkAsync(site, filePath);
 
                 image = new MaterialImage
                 {

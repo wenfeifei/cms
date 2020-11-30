@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using SSCMS.Configuration;
 using SSCMS.Dto;
-using SSCMS.Extensions;
+using SSCMS.Utils;
 
 namespace SSCMS.Web.Controllers.Admin.Plugins
 {
@@ -24,8 +24,6 @@ namespace SSCMS.Web.Controllers.Admin.Plugins
             _pluginManager.UnInstall(request.PluginId);
 
             await _authManager.AddAdminLogAsync("卸载插件", $"插件:{request.PluginId}");
-
-            _hostApplicationLifetime.StopApplication();
 
             return new BoolResult
             {

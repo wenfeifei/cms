@@ -3,7 +3,6 @@ using System.Reflection;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using SSCMS.Configuration;
-using SSCMS.Dto;
 
 namespace SSCMS.Plugins
 {
@@ -26,8 +25,10 @@ namespace SSCMS.Plugins
         IEnumerable<string> Keywords { get; }
         string Homepage { get; }
         string Main { get; }
+        bool ApplyToSites { get; }
+        bool ApplyToChannels { get; }
         bool Disabled { get; }
-        bool IsAllSites { get; }
+        bool AllSites { get; }
         IEnumerable<int> SiteIds { get; }
         IEnumerable<SiteConfig> SiteConfigs { get; }
         IEnumerable<Table> Tables { get; }
@@ -35,5 +36,6 @@ namespace SSCMS.Plugins
         string ErrorMessage { get; }
         int Taxis { get; }
         List<Menu> GetMenus();
+        string GetAssemblyPath();
     }
 }

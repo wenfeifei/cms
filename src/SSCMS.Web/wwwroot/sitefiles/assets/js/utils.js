@@ -14,29 +14,9 @@ if (window.swal && swal.mixin) {
 }
 
 var PER_PAGE = 30;
-var ADMIN_ACCESS_TOKEN_NAME = "ss_admin_access_token";
-var USER_ACCESS_TOKEN_NAME = "ss_user_access_token";
 var DEFAULT_AVATAR_URL = '/sitefiles/assets/images/default_avatar.png';
 
-var $type = "admin";
-
-try {
-  var scripts = document.getElementsByTagName("script");
-  var dataValue = scripts[scripts.length - 1].getAttribute("data-type");
-  if (dataValue) $type = dataValue;
-} catch (e) {}
-
-var $apiUrl = "/api/admin";
-var $rootUrl = "/ss-admin";
-var $token =
-  sessionStorage.getItem(ADMIN_ACCESS_TOKEN_NAME) ||
-  localStorage.getItem(ADMIN_ACCESS_TOKEN_NAME);
-if ($type === "user") {
-  $apiUrl = "/api/home";
-  $rootUrl = "/home";
-  $token = localStorage.getItem(USER_ACCESS_TOKEN_NAME);
-}
-
+var $token = sessionStorage.getItem(ACCESS_TOKEN_NAME) || localStorage.getItem(ACCESS_TOKEN_NAME);
 var $api = axios.create({
   baseURL: $apiUrl,
   headers: {
@@ -207,7 +187,9 @@ var utils = {
   },
 
   getUrl: function(siteUrl, url) {
-    return (siteUrl || '/') + _.trimStart(_.trimStart(_.trimStart(url, '~'), '@'), '/');
+    if (url && url.startsWith('/')) return url;
+    siteUrl = _.trimEnd(siteUrl, '/');
+    return siteUrl + '/' + _.trimStart(_.trimStart(_.trimStart(url, '~'), '@'), '/');
   },
 
   getFriendlyDate: function(date) {
@@ -555,6 +537,33 @@ var utils = {
     } else {
       callback()
     }
+  },
+
+  getForm: function(styles, value) {
+    var form =  _.assign({}, value);
+    for (var i = 0; i < styles.length; i++) {
+      var style = styles[i];
+      var name = _.lowerFirst(style.attributeName);
+      if (style.inputType === 'TextEditor') {
+        setTimeout(function () {
+          var editor = UE.getEditor(style.attributeName, {
+            allowDivTransToP: false,
+            maximumWords: 99999999
+          });
+          editor.attributeName = style.attributeName;
+          editor.ready(function () {
+            editor.addListener("contentChange", function () {
+              $this.form[this.attributeName] = this.getContent();
+            });
+          });
+        }, 100);
+      } else if (style.inputType === 'CheckBox' || style.inputType === 'SelectMultiple') {
+        if (!form[name] || !Array.isArray(form[name])) {
+          form[name] = [];
+        }
+      }
+    }
+    return form;
   },
 
   getRules: function (rules) {

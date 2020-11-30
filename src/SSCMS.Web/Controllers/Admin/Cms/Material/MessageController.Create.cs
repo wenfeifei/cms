@@ -4,13 +4,13 @@ using Microsoft.AspNetCore.Mvc;
 using SSCMS.Configuration;
 using SSCMS.Core.Utils.Office;
 using SSCMS.Dto;
-using SSCMS.Extensions;
 using SSCMS.Utils;
 
 namespace SSCMS.Web.Controllers.Admin.Cms.Material
 {
     public partial class MessageController
     {
+        [RequestSizeLimit(long.MaxValue)]
         [HttpPost, Route(Route)]
         public async Task<ActionResult<BoolResult>> Create([FromQuery] CreateRequest request, [FromForm] IFormFile file)
         {

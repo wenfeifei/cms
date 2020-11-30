@@ -19,6 +19,29 @@ namespace SSCMS.Web.Controllers.Admin
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<ActionResult<GetResult>> Get([FromQuery] GetRequest request)
         {
+            var allowed = true;
+            if (!string.IsNullOrEmpty(_settingsManager.AdminRestrictionHost))
+            {
+                var currentHost = PageUtils.RemoveProtocolFromUrl(PageUtils.GetHost(Request));
+                if (!StringUtils.StartsWithIgnoreCase(currentHost, PageUtils.RemoveProtocolFromUrl(_settingsManager.AdminRestrictionHost)))
+                {
+                    allowed = false;
+                }
+            }
+
+            if (!allowed)
+            {
+                var ipAddress = PageUtils.GetIpAddress(Request);
+                allowed = PageUtils.IsAllowed(ipAddress,
+                    new List<string>(_settingsManager.AdminRestrictionBlockList),
+                    new List<string>(_settingsManager.AdminRestrictionAllowList));
+            }
+
+            if (!allowed)
+            {
+                return this.Error($"访问已被禁止，IP地址：{PageUtils.GetIpAddress(Request)}，请与网站管理员联系开通访问权限");
+            }
+
             var (redirect, redirectUrl) = await AdminRedirectCheckAsync();
             if (redirect)
             {
@@ -158,7 +181,8 @@ namespace SSCMS.Web.Controllers.Admin
                         {
                             Id = "site_switch_all",
                             IconClass = "ion-clock",
-                            Text = _local["Recently site"],
+                            //Text = _local["Recently site"],
+                            Text = "最近访问",
                             Children = allSiteMenus.ToArray()
                         });
                         switchMenus.Add(new Menu
@@ -167,13 +191,15 @@ namespace SSCMS.Web.Controllers.Admin
                             IconClass = "ion-checkmark",
                             Link = _pathManager.GetAdminUrl(SitesLayerSelectController.Route),
                             Target = "_layer",
-                            Text = _local["Select site"]
+                            //Text = _local["Select site"]
+                            Text = "选择站点"
                         });
 
                         menus.Add(new Menu
                         {
                             Id = "site_switch",
-                            Text = _local["Switch site"],
+                            //Text = _local["Switch site"],
+                            Text = "切换站点",
                             Children = switchMenus.ToArray()
                         });
                     }
@@ -199,7 +225,6 @@ namespace SSCMS.Web.Controllers.Admin
             return new GetResult
             {
                 Value = true,
-                IsNightly = _settingsManager.IsNightlyUpdate,
                 Version = _settingsManager.Version,
                 OSArchitecture = _settingsManager.OSArchitecture,
                 AdminLogoUrl = config.AdminLogoUrl,

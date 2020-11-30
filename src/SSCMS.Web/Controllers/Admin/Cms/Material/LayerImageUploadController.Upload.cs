@@ -2,13 +2,13 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using SSCMS.Enums;
-using SSCMS.Extensions;
 using SSCMS.Utils;
 
 namespace SSCMS.Web.Controllers.Admin.Cms.Material
 {
     public partial class LayerImageUploadController
     {
+        [RequestSizeLimit(long.MaxValue)]
         [HttpPost, Route(RouteUpload)]
         public async Task<ActionResult<UploadResult>> Upload([FromQuery] int siteId, [FromForm] IFormFile file)
         {
@@ -33,6 +33,7 @@ namespace SSCMS.Web.Controllers.Admin.Cms.Material
             var filePath = PathUtils.Combine(directoryPath, materialFileName);
 
             await _pathManager.UploadAsync(file, filePath);
+            await _pathManager.AddWaterMarkAsync(site, filePath);
 
             return new UploadResult
             {

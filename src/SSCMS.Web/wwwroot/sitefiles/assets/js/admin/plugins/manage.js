@@ -5,7 +5,6 @@ var $urlActionsRestart = $url + '/actions/restart';
 
 var data = utils.init({
   pageType: utils.getQueryString("pageType"),
-  isNightly: null,
   version: null,
   allPlugins: null,
   plugins: null,
@@ -37,7 +36,6 @@ var methods = {
         return;
       }
 
-      $this.isNightly = res.isNightly;
       $this.version = res.version;
       $this.allPlugins = res.allPlugins;
 
@@ -56,7 +54,7 @@ var methods = {
 
       var pluginIds = $this.enabledPlugins.map(function(x) { return x.pluginId });
 
-      cloud.getUpdates($this.isNightly, $this.version, pluginIds).then(function (response) {
+      cloud.getUpdates($this.version, pluginIds).then(function (response) {
         var res = response.data;
   
         var plugins = res.plugins;
@@ -86,23 +84,27 @@ var methods = {
     }).catch(function (error) {
       utils.error(error);
     }).then(function () {
-      $this.btnNavSelect('enabled');
+      $this.btnNavSelect($this.pageType || 'enabled');
       utils.loading($this, false);
     });
   },
 
-  apiRestart: function () {
+  apiRestart: function (callback) {
     utils.loading(this, true);
     $api.post($urlActionsRestart).then(function (response) {
       setTimeout(function() {
-        utils.alertSuccess({
-          title: '插件重新加载成功',
-          text: '插件重新加载成功，系统需要重载页面',
-          callback: function() {
-            window.top.location.reload(true);
-          }
-        });
-      }, 3000);
+        if (callback) {
+          callback();
+        } else {
+          utils.alertSuccess({
+            title: '插件重新加载成功',
+            text: '插件重新加载成功，系统需要重载页面',
+            callback: function() {
+              window.top.location.reload(true);
+            }
+          });
+        }
+      }, 30000);
     }).catch(function (error) {
       utils.error(error);
     });
@@ -120,12 +122,14 @@ var methods = {
       $this.plugins.splice($this.plugins.indexOf(plugin), 1);
 
       var text = plugin.disabled ? '启用' : '禁用';
-      utils.alertSuccess({
-        title: '插件' + text + '成功',
-        text: '插件' + text + '成功，系统需要重载页面',
-        callback: function() {
-          window.top.location.reload(true);
-        }
+      $this.apiRestart(function() {
+        utils.alertSuccess({
+          title: '插件' + text + '成功',
+          text: '插件' + text + '成功，系统需要重载页面',
+          callback: function() {
+            window.top.location.reload(true);
+          }
+        });
       });
     }).catch(function (error) {
       utils.error(error);
@@ -144,23 +148,25 @@ var methods = {
     }).then(function (response) {
       var res = response.data;
 
-      setTimeout(function () {
+      $this.apiRestart(function () {
         $api.post($urlActionsDelete, {
           pluginId: plugin.pluginId
         }).then(function (response) {
-          utils.alertSuccess({
-            title: '插件卸载成功',
-            text: '插件卸载成功，系统需要重载页面',
-            callback: function() {
-              window.top.location.reload(true);
-            }
+          $this.apiRestart(function () {
+            utils.alertSuccess({
+              title: '插件卸载成功',
+              text: '插件卸载成功，系统需要重载页面',
+              callback: function() {
+                window.top.location.reload(true);
+              }
+            });
           });
         }).catch(function (error) {
           utils.error(error);
         }).then(function () {
           utils.loading($this, false);
         });
-      }, 3000);
+      });
       
     }).catch(function (error) {
       utils.error(error);

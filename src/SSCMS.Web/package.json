@@ -29,7 +29,7 @@
         "order": 3
       },
       "app_settings_sites": {
-        "text": "站点管理",
+        "text": "站群管理",
         "type": ["app"],
         "order": 4
       },
@@ -133,35 +133,30 @@
         "type": ["app"],
         "order": 24
       },
-      "app_settings_configsAdmin": {
-        "text": "管理后台设置",
-        "type": ["app"],
-        "order": 25
-      },
       "app_settings_configsHome": {
         "text": "用户中心设置",
         "type": ["app"],
-        "order": 26
+        "order": 25
       },
       "app_settings_configsHomeMenu": {
         "text": "用户中心菜单",
         "type": ["app"],
-        "order": 27
+        "order": 26
       },
       "app_settings_utilitiesCache": {
         "text": "系统缓存",
         "type": ["app"],
-        "order": 28
+        "order": 27
       },
       "app_settings_utilitiesParameters": {
         "text": "系统参数",
         "type": ["app"],
-        "order": 29
+        "order": 28
       },
       "app_settings_utilitiesEncrypt": {
         "text": "加密符串",
         "type": ["app"],
-        "order": 30
+        "order": 29
       },
       "site_contents": {
         "text": "内容管理",
@@ -179,7 +174,7 @@
         "order": 3
       },
       "site_channelsTranslate": {
-        "text": "批量转移",
+        "text": "批量复制",
         "type": ["web", "wx"],
         "order": 4
       },
@@ -293,13 +288,13 @@
         "type": ["web", "wx"],
         "order": 26
       },
-      "site_settingsCrossSiteTrans": {
-        "text": "跨站转发审核设置",
+      "site_settingsCrossSiteTransChannels": {
+        "text": "跨站转发栏目设置",
         "type": ["web", "wx"],
         "order": 27
       },
-      "site_settingsCrossSiteTransChannels": {
-        "text": "跨站转发栏目设置",
+      "site_settingsCrossSiteTrans": {
+        "text": "跨站转发审核设置",
         "type": ["web", "wx"],
         "order": 28
       },
@@ -576,7 +571,7 @@
             "order": 1
           },
           "app_settings_sites_all": {
-            "text": "站点管理",
+            "text": "站群管理",
             "permissions": [
               "app_settings_sites",
               "app_settings_sitesUrl",
@@ -588,7 +583,7 @@
             "order": 2,
             "menus": {
               "app_settings_sites": {
-                "text": "站点管理",
+                "text": "站群管理",
                 "link": "./settings/sites/",
                 "permissions": ["app_settings_sites"],
                 "order": 1
@@ -770,30 +765,23 @@
           "app_settings_configs_all": {
             "text": "系统设置",
             "permissions": [
-              "app_settings_configsAdmin",
               "app_settings_configsHome",
               "app_settings_configsHomeMenu"
             ],
             "iconClass": "ion-wrench",
             "order": 7,
             "menus": {
-              "app_settings_configsAdmin": {
-                "text": "管理后台设置",
-                "link": "./settings/configsAdmin/",
-                "permissions": ["app_settings_configsAdmin"],
-                "order": 1
-              },
               "app_settings_configsHome": {
                 "text": "用户中心设置",
                 "link": "./settings/configsHome/",
                 "permissions": ["app_settings_configsHome"],
-                "order": 2
+                "order": 1
               },
               "app_settings_configsHomeMenu": {
                 "text": "用户中心菜单",
                 "link": "./settings/configsHomeMenu/",
                 "permissions": ["app_settings_configsHomeMenu"],
-                "order": 3
+                "order": 2
               }
             }
           },
@@ -919,7 +907,7 @@
             }
           },
           "site_channelsTranslate": {
-            "text": "批量转移",
+            "text": "批量复制",
             "link": "./cms/channelsTranslate/",
             "permissions": ["site_channelsTranslate"],
             "order": 6
@@ -933,7 +921,7 @@
         }
       },
       "site_wx_all": {
-        "text": "微信管理",
+        "text": "微信公众号",
         "type": ["wx"],
         "permissions": [
           "site_wxAccount",
@@ -1183,16 +1171,16 @@
             ],
             "order": 6,
             "menus": {
-              "site_settingsCrossSiteTrans": {
-                "text": "跨站转发审核设置",
-                "link": "./cms/settingsCrossSiteTrans/",
-                "permissions": ["site_settingsCrossSiteTrans"],
-                "order": 1
-              },
               "site_settingsCrossSiteTransChannels": {
                 "text": "跨站转发栏目设置",
                 "link": "./cms/settingsCrossSiteTransChannels/",
                 "permissions": ["site_settingsCrossSiteTransChannels"],
+                "order": 1
+              },
+              "site_settingsCrossSiteTrans": {
+                "text": "跨站转发审核设置",
+                "link": "./cms/settingsCrossSiteTrans/",
+                "permissions": ["site_settingsCrossSiteTrans"],
                 "order": 2
               }
             }

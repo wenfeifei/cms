@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using SSCMS.Configuration;
 using SSCMS.Enums;
-using SSCMS.Extensions;
 using SSCMS.Models;
 using SSCMS.Utils;
 
@@ -12,6 +11,7 @@ namespace SSCMS.Web.Controllers.Admin.Cms.Material
 {
     public partial class ImageController
     {
+        [RequestSizeLimit(long.MaxValue)]
         [HttpPost, Route(Route)]
         public async Task<ActionResult<MaterialImage>> Create([FromQuery] CreateRequest request, [FromForm] IFormFile file)
         {
@@ -41,6 +41,7 @@ namespace SSCMS.Web.Controllers.Admin.Cms.Material
             var filePath = PathUtils.Combine(directoryPath, materialFileName);
 
             await _pathManager.UploadAsync(file, filePath);
+            await _pathManager.AddWaterMarkAsync(site, filePath);
 
             var image = new MaterialImage
             {

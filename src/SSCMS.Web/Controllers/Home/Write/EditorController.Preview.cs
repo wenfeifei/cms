@@ -1,7 +1,7 @@
 ﻿using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using SSCMS.Configuration;
-using SSCMS.Extensions;
+using SSCMS.Utils;
 
 namespace SSCMS.Web.Controllers.Home.Write
 {
@@ -51,7 +51,7 @@ namespace SSCMS.Web.Controllers.Home.Write
 
             return new PreviewResult
             {
-                Url = _pathManager.GetPreviewContentUrl(request.SiteId, request.ChannelId, request.ContentId, content.Id)
+                Url = _pathManager.GetPreviewContentUrl(request.SiteId, request.ChannelId, content.Id, true)
             };
 
             ////contentInfo.GroupNameCollection = ControlUtils.SelectedItemsValueToStringCollection(CblContentGroups.Items);

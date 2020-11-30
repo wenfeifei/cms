@@ -16,6 +16,7 @@ namespace SSCMS.Web.Controllers.Admin.Plugins
         private const string Route = "plugins/view";
         private const string RouteActionsDisable = "plugins/view/actions/disable";
         private const string RouteActionsDelete = "plugins/view/actions/delete";
+        private const string RouteActionsRestart = "plugins/view/actions/restart";
 
         private readonly IHostApplicationLifetime _hostApplicationLifetime;
         private readonly ISettingsManager _settingsManager;
@@ -32,7 +33,6 @@ namespace SSCMS.Web.Controllers.Admin.Plugins
 
         public class GetResult
         {
-            public bool IsNightly { get; set; }
             public string Version { get; set; }
             public IPlugin LocalPlugin { get; set; }
             public string Content { get; set; }

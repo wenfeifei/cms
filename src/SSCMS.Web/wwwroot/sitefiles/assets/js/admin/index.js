@@ -10,7 +10,6 @@ var $collapseWidth = 60;
 var data = utils.init({
   siteId: utils.getQueryInt('siteId'),
   sessionId: localStorage.getItem('sessionId'),
-  isNightly: null,
   version: null,
   adminLogoUrl: null,
   adminTitle: null,
@@ -23,7 +22,7 @@ var data = utils.init({
   previewUrl: null,
   local: null,
   menu: null,
-  searchWord: null,
+  keyword: null,
   newCms: null,
   newPlugins: [],
 
@@ -58,7 +57,6 @@ var methods = {
       if (res.value) {
         utils.addTab('首页', utils.getRootUrl('dashboard'));
 
-        $this.isNightly = res.isNightly;
         $this.version = res.version;
         $this.adminLogoUrl = res.adminLogoUrl || utils.getAssetsUrl('images/logo.png');
         $this.adminTitle = res.adminTitle || 'SS CMS';
@@ -137,7 +135,7 @@ var methods = {
     var $this = this;
 
     var pluginIds = this.plugins.map(function (x){ return x.pluginId});
-    cloud.getUpdates($this.isNightly, $this.version, pluginIds).then(function (response) {
+    cloud.getUpdates($this.version, pluginIds).then(function (response) {
       var res = response.data;
 
       var cms = res.cms;
@@ -191,6 +189,11 @@ var methods = {
       this.contextTabName = _.trimStart(e.srcElement.id, 'tab-');
       this.contextMenuVisible = true;
       this.contextLeft = e.clientX;
+      if (e.clientX + 130 > this.winWidth) {
+        this.contextLeft = this.winWidth - 130;
+      } else {
+        this.contextLeft = e.clientX;
+      }
       this.contextTop = e.clientY;
     }
   },
@@ -243,6 +246,15 @@ var methods = {
     else if (level2) return level1.id + '/' + level2.id;
     else if (level1) return level1.id;
     return '';
+  },
+
+  btnSearchClick: function() {
+    if (!this.keyword) return;
+
+    utils.addTab('内容搜索', utils.getCmsUrl('contentsSearch', {
+      siteId: this.siteId,
+      keyword: this.keyword
+    }));
   },
 
   btnTopMenuClick: function (menu) {

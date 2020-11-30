@@ -3,13 +3,13 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using SSCMS.Configuration;
 using SSCMS.Dto;
-using SSCMS.Extensions;
 using SSCMS.Utils;
 
 namespace SSCMS.Web.Controllers.Admin.Cms.Channels
 {
     public partial class ChannelsController
     {
+        [RequestSizeLimit(long.MaxValue)]
         [HttpPost, Route(RouteUpload)]
         public async Task<ActionResult<StringResult>> Upload([FromQuery] int siteId, [FromForm] IFormFile file)
         {

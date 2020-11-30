@@ -8,7 +8,6 @@ using NSwag.Annotations;
 using SSCMS.Configuration;
 using SSCMS.Dto;
 using SSCMS.Enums;
-using SSCMS.Extensions;
 using SSCMS.Models;
 using SSCMS.Repositories;
 using SSCMS.Services;
@@ -50,6 +49,7 @@ namespace SSCMS.Web.Controllers.Admin.Common.Form
             return options;
         }
 
+        [RequestSizeLimit(long.MaxValue)]
         [HttpPost, Route(RouteUpload)]
         public async Task<ActionResult<UploadResult>> Upload([FromQuery] UploadRequest request, [FromForm] IFormFile file)
         {

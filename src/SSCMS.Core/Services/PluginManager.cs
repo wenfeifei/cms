@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using SSCMS.Configuration;
@@ -33,7 +32,7 @@ namespace SSCMS.Core.Services
             {
                 _config
             };
-            if (DirectoryUtils.IsDirectoryExists(_directoryPath))
+            if (!_settingsManager.IsDisablePlugins && DirectoryUtils.IsDirectoryExists(_directoryPath))
             {
                 foreach (var folderPath in DirectoryUtils.GetDirectoryPaths(_directoryPath))
                 {
@@ -73,14 +72,14 @@ namespace SSCMS.Core.Services
             _settingsManager.Configuration = builder.Build();
         }
 
-        public IPlugin Current
-        {
-            get
-            {
-                var assembly = Assembly.GetCallingAssembly();
-                return assembly == null ? null : NetCorePlugins.FirstOrDefault(x => x.Assembly.FullName == assembly.FullName);
-            }
-        }
+        //public IPlugin Current
+        //{
+        //    get
+        //    {
+        //        var assembly = Assembly.GetCallingAssembly();
+        //        return assembly == null ? null : NetCorePlugins.FirstOrDefault(x => x.Assembly.FullName == assembly.FullName);
+        //    }
+        //}
 
         public List<IPlugin> Plugins { get; private set; }
 
@@ -102,15 +101,15 @@ namespace SSCMS.Core.Services
         private static bool IsEnabled(IPlugin plugin, int siteId)
         {
             if (plugin == null || plugin.Disabled) return false;
-            return plugin.IsAllSites || ListUtils.Contains(plugin.SiteIds, siteId);
+            return plugin.ApplyToSites && (plugin.AllSites || ListUtils.Contains(plugin.SiteIds, siteId));
         }
 
         private static bool IsEnabled(IPlugin plugin, int siteId, int channelId)
         {
-            if (plugin == null || plugin.Disabled) return false;
+            if (!IsEnabled(plugin, siteId)) return false;
             var siteConfig = plugin.SiteConfigs?.FirstOrDefault(x => x.SiteId == siteId);
             if (siteConfig == null) return false;
-            return siteConfig.IsAllChannels || ListUtils.Contains(siteConfig.ChannelIds, channelId);
+            return siteConfig.AllChannels || ListUtils.Contains(siteConfig.ChannelIds, channelId);
         }
 
         public bool IsEnabled(string pluginId, int siteId)

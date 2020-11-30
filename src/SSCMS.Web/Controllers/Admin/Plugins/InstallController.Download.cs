@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using SSCMS.Configuration;
 using SSCMS.Dto;
+using SSCMS.Utils;
 
 namespace SSCMS.Web.Controllers.Admin.Plugins
 {
@@ -13,6 +14,17 @@ namespace SSCMS.Web.Controllers.Admin.Plugins
             if (!await _authManager.HasAppPermissionsAsync(Types.AppPermissions.PluginsAdd))
             {
                 return Unauthorized();
+            }
+
+            if (!string.IsNullOrEmpty(request.Path))
+            {
+                if (!FileUtils.DeleteFileIfExists(request.Path))
+                {
+                    return new BoolResult
+                    {
+                        Value = false
+                    };
+                }
             }
 
             _pluginManager.Install(request.PluginId, request.Version);

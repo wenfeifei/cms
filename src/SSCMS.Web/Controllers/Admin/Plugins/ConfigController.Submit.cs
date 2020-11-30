@@ -18,13 +18,11 @@ namespace SSCMS.Web.Controllers.Admin.Plugins
 
             var config = await _pluginManager.GetConfigAsync(request.PluginId);
             config[nameof(IPlugin.Taxis)] = request.Taxis;
-            config[nameof(IPlugin.IsAllSites)] = request.IsAllSites;
+            config[nameof(IPlugin.AllSites)] = request.AllSites;
             config[nameof(IPlugin.SiteIds)] = request.SiteIds;
             await _pluginManager.SaveConfigAsync(request.PluginId, config);
 
             await _authManager.AddAdminLogAsync("修改插件配置", $"插件:{request.PluginId}");
-
-            _hostApplicationLifetime.StopApplication();
 
             return new BoolResult
             {

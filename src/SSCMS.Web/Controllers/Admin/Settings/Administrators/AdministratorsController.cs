@@ -11,7 +11,6 @@ using SSCMS.Configuration;
 using SSCMS.Core.Utils;
 using SSCMS.Core.Utils.Office;
 using SSCMS.Dto;
-using SSCMS.Extensions;
 using SSCMS.Models;
 using SSCMS.Repositories;
 using SSCMS.Services;
@@ -276,6 +275,7 @@ namespace SSCMS.Web.Controllers.Admin.Settings.Administrators
             };
         }
 
+        [RequestSizeLimit(long.MaxValue)]
         [HttpPost, Route(RouteImport)]
         public async Task<ActionResult<ImportResult>> Import([FromForm] IFormFile file)
         {

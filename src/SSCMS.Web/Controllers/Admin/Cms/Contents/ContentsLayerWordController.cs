@@ -9,7 +9,6 @@ using SSCMS.Configuration;
 using SSCMS.Core.Utils;
 using SSCMS.Core.Utils.Office;
 using SSCMS.Dto;
-using SSCMS.Extensions;
 using SSCMS.Models;
 using SSCMS.Repositories;
 using SSCMS.Services;
@@ -68,6 +67,7 @@ namespace SSCMS.Web.Controllers.Admin.Cms.Contents
             };
         }
 
+        [RequestSizeLimit(long.MaxValue)]
         [HttpPost, Route(RouteUpload)]
         public async Task<ActionResult<NameTitle>> Upload([FromQuery] ChannelRequest request, [FromForm] IFormFile file)
         {

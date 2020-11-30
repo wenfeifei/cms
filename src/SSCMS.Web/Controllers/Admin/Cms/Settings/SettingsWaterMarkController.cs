@@ -7,7 +7,6 @@ using NSwag.Annotations;
 using SSCMS.Configuration;
 using SSCMS.Core.Utils;
 using SSCMS.Dto;
-using SSCMS.Extensions;
 using SSCMS.Repositories;
 using SSCMS.Services;
 using SSCMS.Utils;
@@ -53,6 +52,7 @@ namespace SSCMS.Web.Controllers.Admin.Cms.Settings
             };
         }
 
+        [RequestSizeLimit(long.MaxValue)]
         [HttpPost, Route(RouteUpload)]
         public async Task<ActionResult<UploadResult>> Upload([FromQuery] SiteRequest request, [FromForm] IFormFile file)
         {

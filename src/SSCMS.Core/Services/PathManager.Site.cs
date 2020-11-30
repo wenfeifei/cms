@@ -166,40 +166,35 @@ namespace SSCMS.Core.Services
 
         public string GetPreviewSiteUrl(int siteId)
         {
-            var apiUrl = GetApiUrl(Constants.RoutePreview);
+            var apiUrl = PageUtils.Combine(_settingsManager.ApiHost, Constants.RoutePreview);
             apiUrl = apiUrl.Replace("{siteId}", siteId.ToString());
             return apiUrl;
         }
 
         public string GetPreviewChannelUrl(int siteId, int channelId)
         {
-            var apiUrl = GetApiUrl(Constants.RoutePreviewChannel);
+            var apiUrl = PageUtils.Combine(_settingsManager.ApiHost, Constants.RoutePreviewChannel);
             apiUrl = apiUrl.Replace("{siteId}", siteId.ToString());
             apiUrl = apiUrl.Replace("{channelId}", channelId.ToString());
             return apiUrl;
         }
 
-        public string GetPreviewContentUrl(int siteId, int channelId, int contentId)
+        public string GetPreviewContentUrl(int siteId, int channelId, int contentId, bool isPreview = false)
         {
-            var apiUrl = GetApiUrl(Constants.RoutePreviewContent);
+            var apiUrl = PageUtils.Combine(_settingsManager.ApiHost, Constants.RoutePreviewContent);
             apiUrl = apiUrl.Replace("{siteId}", siteId.ToString());
             apiUrl = apiUrl.Replace("{channelId}", channelId.ToString());
             apiUrl = apiUrl.Replace("{contentId}", contentId.ToString());
-            return apiUrl;
-        }
-
-        public string GetPreviewContentUrl(int siteId, int channelId, int contentId, int previewId)
-        {
-            if (contentId == 0)
+            if (isPreview)
             {
-                contentId = previewId;
+                apiUrl += "?isPreview=true";
             }
-            return $"{GetPreviewContentUrl(siteId, channelId, contentId)}?isPreview=true&previewId={previewId}";
+            return apiUrl;
         }
 
         public string GetPreviewFileUrl(int siteId, int fileTemplateId)
         {
-            var apiUrl = GetApiUrl(Constants.RoutePreviewFile);
+            var apiUrl = PageUtils.Combine(_settingsManager.ApiHost, Constants.RoutePreviewFile);
             apiUrl = apiUrl.Replace("{siteId}", siteId.ToString());
             apiUrl = apiUrl.Replace("{fileTemplateId}", fileTemplateId.ToString());
             return apiUrl;
@@ -207,7 +202,7 @@ namespace SSCMS.Core.Services
 
         public string GetPreviewSpecialUrl(int siteId, int specialId)
         {
-            var apiUrl = GetApiUrl(Constants.RoutePreviewSpecial);
+            var apiUrl = PageUtils.Combine(_settingsManager.ApiHost, Constants.RoutePreviewSpecial);
             apiUrl = apiUrl.Replace("{siteId}", siteId.ToString());
             apiUrl = apiUrl.Replace("{specialId}", specialId.ToString());
             return apiUrl;
@@ -262,7 +257,7 @@ namespace SSCMS.Core.Services
             var referenceId = contentCurrent.ReferenceId;
             var linkUrl = contentCurrent.LinkUrl;
             var channelId = contentCurrent.ChannelId;
-            if (referenceId > 0 && TranslateContentType.ReferenceContent.GetValue() == contentCurrent.Get<string>(ColumnsManager.TranslateContentType))
+            if (referenceId > 0 && TranslateType.ReferenceContent.GetValue() == contentCurrent.Get<string>(ColumnsManager.TranslateContentType))
             {
                 if (sourceId > 0 && await _channelRepository.IsExistsAsync(sourceId))
                 {
@@ -318,7 +313,7 @@ namespace SSCMS.Core.Services
 
             var contentInfoCurrent = await _contentRepository.GetAsync(site, channelId, contentId);
 
-            if (referenceId > 0 && TranslateContentType.ReferenceContent.GetValue() == contentInfoCurrent.Get<string>(ColumnsManager.TranslateContentType))
+            if (referenceId > 0 && TranslateType.ReferenceContent.GetValue() == contentInfoCurrent.Get<string>(ColumnsManager.TranslateContentType))
             {
                 if (sourceId > 0 && await _channelRepository.IsExistsAsync(sourceId))
                 {
